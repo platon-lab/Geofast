@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Битва Улюбленців - Platon Games</title>
+    <style>
+        :root {
+            --bg-color: #050410;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-glow: 0 0 10px rgba(120, 0, 255, 0.5);
+            --text-color: #f0f0f0;
+            --accent: #b026ff;
+            --bot-color: #ff3366;
+            --human-color: #00ffcc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: var(--bg-color);
+            background-image: radial-gradient(circle at center, #1a1a2e 0%, #050410 100%);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+            padding: 10px;
+        }
+
+        .screen.active { opacity: 1; pointer-events: auto; }
+
+        h1 { font-size: 1.8rem; text-shadow: var(--neon-glow); margin-bottom: 15px; text-align: center; }
+        h2 { font-size: 1.2rem; margin-bottom: 10px; }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: bold;
+        }
+
+        .btn:active { transform: scale(0.95); background: var(--accent); }
+
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .char-card {
+            padding: 8px;
+            text-align: center;
+            border: 2px solid transparent;
+            font-size: 0.8rem;
+        }
+
+        .char-card img {
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            margin-bottom: 5px;
+            background: #111;
+        }
+
+        .char-card.selected { border-color: var(--human-color); box-shadow: 0 0 10px var(--human-color); }
+
+        /* Arena */
+        #arena { position: relative; width: 100%; height: 100%; }
+
+        .center-indicator {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1rem;
+            text-align: center;
+            padding: 15px;
+            width: 200px;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .player-node {
+            position: absolute;
+            width: 80px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translate(-50%, -50%);
+            transition: all 0.5s ease;
+            z-index: 10;
+        }
+
+        .player-node img {
+            width: 55px; height: 55px;
+            border-radius: 50%;
+            border: 2px solid #444;
+            transition: 0.3s;
+            object-fit: cover;
+        }
+
+        .player-node .name { font-size: 0.7rem; font-weight: bold; margin-top: 3px; }
+        .player-node .hp { font-size: 0.6rem; color: #ff4d4d; text-align: center; }
+
+        .player-node.active img { border-color: var(--accent); box-shadow: 0 0 15px var(--accent); transform: scale(1.1); }
+        .player-node.dead img { filter: grayscale(1) opacity(0.5); }
+        
+        .player-node.targetable img {
+            border-color: #ffeb3b;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .action-bar {
+            position: absolute;
+            bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+            width: 95%;
+            justify-content: center;
+            overflow-x: auto;
+        }
+
+        .action-bar.visible { opacity: 1; pointer-events: auto; }
+
+        .action-btn {
+            min-width: 55px;
+            padding: 8px;
+            text-align: center;
+            border-radius: 10px;
+        }
+
+        .action-btn.disabled { opacity: 0.2; pointer-events: none; }
+        .action-btn .emoji { font-size: 1.2rem; }
+        .action-btn .desc { font-size: 0.5rem; font-weight: bold; }
+
+        .projectile {
+            position: absolute;
+            font-size: 1.5rem;
+            z-index: 100;
+            transition: all 0.6s linear;
+        }
+
+        .shake { animation: shake 0.3s; }
+        @keyframes shake {
+            0% { transform: translate(2px, 2px); }
+            25% { transform: translate(-2px, -2px); }
+            50% { transform: translate(2px, -2px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .flash {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: white; opacity: 0; pointer-events: none; z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="flash-overlay" class="flash"></div>
+
+    <div id="main-menu" class="screen active">
+        <h1>PLATON GAMES</h1>
+        <button class="btn" onclick="goToModeSelect(1)">1 Гравець</button>
+        <button class="btn" onclick="goToModeSelect('multi')">Мультиплеєр</button>
+        <button class="btn" onclick="goToSandbox()">Пісочниця</button>
+    </div>
+
+    <div id="char-select-screen" class="screen glass">
+        <h2 id="char-select-title">Вибір</h2>
+        <div class="char-grid" id="char-grid"></div>
+        <button class="btn" id="start-game-btn" onclick="startGame()" disabled>БИТВА!</button>
+    </div>
+
+    <div id="sandbox-screen" class="screen glass">
+        <h2>Пісочниця</h2>
+        <div id="sandbox-config" style="overflow-y:auto; width:100%; margin-bottom:10px;"></div>
+        <button class="btn" onclick="startSandboxGame()">ПУСК</button>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div id="arena">
+            <div class="center-indicator glass" id="center-info">...</div>
+            <div id="players-container"></div>
+            <div class="action-bar glass" id="action-bar"></div>
+        </div>
+    </div>
+
+    <script>
+        const CHARACTERS = [
+            { id: 'tito', name: 'Тіто', img: 'Tito.png' },
+            { id: 'smartik', name: 'Смартік', img: 'Smartik.png' },
+            { id: 'junior', name: 'Джуніор', img: 'Junior.png' },
+            { id: 'fil', name: 'Філ', img: 'Fil.png' },
+            { id: 'milka', name: 'Мілка', img: 'Milka.png' },
+            { id: 'bark', name: 'Барк', img: 'Bark.png' }
+        ];
+
+        const ACTIONS = [
+            { id: 'dot', emoji: '🎯', name: 'Пуля', desc: '-1 HP', chance: 0.9, type: 'attack' },
+            { id: 'grenade', emoji: '💣', name: 'Граната', desc: '-2 HP', chance: 0.6, type: 'attack' },
+            { id: 'nuke', emoji: '☢️', name: 'Ядерка', desc: '-6 HP', chance: 0.3, type: 'attack', cost: 'nukes' },
+            { id: 'poison', emoji: '☠️', name: 'Отрута', desc: 'Хід -1', chance: 0.4, type: 'attack' },
+            { id: 'heal', emoji: '❤️', name: 'Хіл', desc: '+1 HP', chance: 0.5, type: 'support' },
+            { id: 'revive', emoji: '🔮', name: 'Респавн', desc: 'HP 2', chance: 0.2, type: 'support' }
+        ];
+
+        let mode = 1, selectedChars = [], players = [], currentPlayerIndex = -1, selectedAction = null, gameActive = false;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if(type === 'shoot') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(); osc.stop(now + 0.1);
+            } else if(type === 'boom') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(10, now + 0.4);
+                gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 0.4);
+                osc.start(); osc.stop(now + 0.4);
+            } else if(type === 'heal') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(500, now);
+                osc.frequency.exponentialRampToValueAtTime(900, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(); osc.stop(now + 0.2);
+            }
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function goToModeSelect(m) {
+            mode = m; selectedChars = [];
+            const grid = document.getElementById('char-grid'); grid.innerHTML = '';
+            CHARACTERS.forEach(char => {
+                const card = document.createElement('div');
+                card.className = 'char-card glass';
+                card.innerHTML = `<img src="${char.img}"><div>${char.name}</div>`;
+                card.onclick = () => {
+                    if (mode === 1) { selectedChars = [char.id]; document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected')); card.classList.add('selected'); }
+                    else { card.classList.toggle('selected'); if(selectedChars.includes(char.id)) selectedChars = selectedChars.filter(x => x!==char.id); else selectedChars.push(char.id); }
+                    document.getElementById('start-game-btn').disabled = mode === 1 ? selectedChars.length !== 1 : selectedChars.length < 2;
+                };
+                grid.appendChild(card);
+            });
+            showScreen('char-select-screen');
+        }
+
+        function goToSandbox() {
+            mode = 'sandbox'; const config = document.getElementById('sandbox-config'); config.innerHTML = '';
+            players = CHARACTERS.map(c => ({ ...c, hp: 10, nukes: 1, included: true }));
+            players.forEach((p, i) => {
+                const div = document.createElement('div'); div.className = 'glass'; div.style.margin='5px'; div.style.padding='5px';
+                div.innerHTML = `<input type="checkbox" checked onchange="players[${i}].included=this.checked"> ${p.name} HP:<input type="number" value="10" style="width:40px" onchange="players[${i}].hp=parseInt(this.value)">`;
+                config.appendChild(div);
+            });
+            showScreen('sandbox-screen');
+        }
+
+        function startGame() {
+            players = CHARACTERS.map(c => ({ ...c, hp: Math.floor(Math.random()*15)+5, nukes: 1, isBot: !selectedChars.includes(c.id), poison: 0, alive: true }));
+            initArena();
+        }
+
+        function startSandboxGame() {
+            players = players.filter(p => p.included).map(p => ({ ...p, alive: true, poison: 0, isBot: false }));
+            initArena();
+        }
+
+        function initArena() {
+            showScreen('game-screen'); renderActionBar(); gameActive = true;
+            renderPlayers(); chooseFirstPlayer();
+        }
+
+        function chooseFirstPlayer() {
+            let idx = Math.floor(Math.random() * players.length);
+            currentPlayerIndex = idx;
+            beginTurn();
+        }
+
+        function renderPlayers() {
+            const container = document.getElementById('players-container'); container.innerHTML = '';
+            const radius = Math.min(window.innerWidth, window.innerHeight) * 0.35;
+            const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+            players.forEach((p, i) => {
+                const angle = (i / players.length) * 2 * Math.PI - Math.PI/2;
+                const node = document.createElement('div');
+                node.className = `player-node ${p.alive ? '' : 'dead'}`;
+                node.id = `node-${i}`;
+                node.style.left = `${cx + radius * Math.cos(angle)}px`;
+                node.style.top = `${cy + radius * Math.sin(angle)}px`;
+                node.onclick = () => handleTarget(i);
+                node.innerHTML = `<div class="name" style="color:${p.isBot?'var(--bot-color)':'var(--human-color)'}">${p.name}</div>
+                                  <img src="${p.img}"><div class="hp">${p.alive?'❤️'.repeat(Math.min(p.hp, 5))+(p.hp>5?'+'+p.hp:''):'💀'}</div>
+                                  <div style="font-size:0.5rem">${p.poison>0?'🤢':''} ${p.nukes>0?'☢️':''}</div>`;
+                container.appendChild(node);
+            });
+        }
+
+        function renderActionBar() {
+            const bar = document.getElementById('action-bar'); bar.innerHTML = '';
+            ACTIONS.forEach((a, i) => {
+                const b = document.createElement('div'); b.className = 'action-btn glass'; b.id = `act-${i}`;
+                b.innerHTML = `<div class="emoji">${a.emoji}</div><div class="desc">${a.name}</div>`;
+                b.onclick = () => { selectedAction = a; document.querySelectorAll('.player-node').forEach((n, idx) => { if(idx!==currentPlayerIndex && (a.id==='revive'?!players[idx].alive:players[idx].alive)) n.classList.add('targetable'); }); };
+                bar.appendChild(b);
+            });
+        }
+
+        async function beginTurn() {
+            const p = players[currentPlayerIndex];
+            if(!p.alive || !gameActive) { passTurn( (currentPlayerIndex+1)%players.length ); return; }
+
+            // ОБРОБКА ОТРУТИ ДЛЯ ВСІХ ГРАВЦІВ[cite: 1]
+            players.forEach((target, idx) => {
+                if(target.alive && target.poison > 0) {
+                    target.hp -= 1;
+                    target.poison -= 1;
+                    animateText(idx, "-1 🤢", "#00ffcc");
+                    if(target.hp <= 0) { target.alive = false; playSound('boom'); }
+                }
+            });
+            renderPlayers();
+            if(!p.alive) { passTurn((currentPlayerIndex+1)%players.length); return; }
+
+            document.querySelectorAll('.player-node').forEach(n => n.classList.remove('active', 'targetable'));
+            document.getElementById(`node-${currentPlayerIndex}`).classList.add('active');
+            setCenterText(`Хід: ${p.name}`);
+
+            if(p.isBot) { await new Promise(r => setTimeout(r, 1000)); botLogic(); }
+            else { 
+                document.getElementById('action-bar').classList.add('visible');
+                // Випадкова доступність кнопок
+                ACTIONS.forEach((a, i) => {
+                    const btn = document.getElementById(`act-${i}`);
+                    const available = Math.random() < a.chance && (a.cost==='nukes'?p.nukes>0:true);
+                    btn.classList.toggle('disabled', !available);
+                });
+            }
+        }
+
+        function botLogic() {
+            const acts = ACTIONS.filter(a => Math.random() < a.chance && (a.cost==='nukes'?players[currentPlayerIndex].nukes>0:true));
+            const a = acts.length ? acts[Math.floor(Math.random()*acts.length)] : ACTIONS[0];
+            const targets = players.map((p,i)=>i).filter(i => i!==currentPlayerIndex && (a.id==='revive'?!players[i].alive:players[i].alive));
+            if(targets.length) executeAction(targets[Math.floor(Math.random()*targets.length)], a);
+            else passTurn((currentPlayerIndex+1)%players.length);
+        }
+
+        function handleTarget(i) {
+            if(!selectedAction || i === currentPlayerIndex) return;
+            if(selectedAction.id==='revive' && players[i].alive) return;
+            if(selectedAction.id!=='revive' && !players[i].alive) return;
+            executeAction(i, selectedAction);
+        }
+
+        async function executeAction(tIdx, a) {
+            selectedAction = null;
+            document.getElementById('action-bar').classList.remove('visible');
+            document.querySelectorAll('.player-node').forEach(n => n.classList.remove('targetable'));
+            
+            const attacker = players[currentPlayerIndex];
+            const target = players[tIdx];
+            if(a.cost==='nukes') attacker.nukes--;
+
+            playSound('shoot');
+            await animateProjectile(currentPlayerIndex, tIdx, a.emoji);
+
+            if(a.id === 'dot') target.hp -= 1;
+            else if(a.id === 'grenade') { target.hp -= 2; playSound('boom'); screenShake(); }
+            else if(a.id === 'nuke') { target.hp -= 6; playSound('boom'); flash(); screenShake(); }
+            else if(a.id === 'poison') target.poison = 3;
+            else if(a.id === 'heal') { target.hp += 1; playSound('heal'); }
+            else if(a.id === 'revive') { target.alive = true; target.hp = 2; playSound('heal'); }
+
+            if(target.hp <= 0) { target.hp = 0; target.alive = false; }
+            
+            renderPlayers();
+            if(checkWin()) return;
+
+            // НОВА ЛОГІКА ЧЕРГИ: ХТО ПРИЙНЯВ УДАР, ТОЙ ХОДИТЬ[cite: 1]
+            setTimeout(() => passTurn(tIdx), 800);
+        }
+
+        function passTurn(nextIdx) {
+            if(!gameActive) return;
+            currentPlayerIndex = nextIdx;
+            if(!players[currentPlayerIndex].alive) {
+                let found = players.findIndex(p => p.alive);
+                if(found !== -1) currentPlayerIndex = found;
+            }
+            beginTurn();
+        }
+
+        function checkWin() {
+            const alive = players.filter(p => p.alive);
+            if(alive.length <= 1) {
+                gameActive = false;
+                setCenterText(`🏆 ${alive.length?alive[0].name:'НІХТО'} 🏆`, "gold");
+                setTimeout(()=>location.reload(), 3000);
+                return true;
+            }
+            return false;
+        }
+
+        function setCenterText(t, c="white") { const el = document.getElementById('center-info'); el.innerText = t; el.style.color = c; }
+        
+        function animateProjectile(f, t, e) {
+            return new Promise(res => {
+                const p = document.createElement('div'); p.className = 'projectile'; p.innerText = e;
+                const fNode = document.getElementById(`node-${f}`), tNode = document.getElementById(`node-${t}`);
+                p.style.left = fNode.style.left; p.style.top = fNode.style.top;
+                document.body.appendChild(p);
+                setTimeout(() => { p.style.left = tNode.style.left; p.style.top = tNode.style.top; }, 50);
+                setTimeout(() => { p.remove(); res(); }, 650);
+            });
+        }
+
+        function animateText(i, t, c) {
+            const n = document.getElementById(`node-${i}`);
+            const d = document.createElement('div'); d.innerText = t;
+            d.style.cssText = `position:absolute; left:${n.style.left}; top:${n.style.top}; color:${c}; font-weight:bold; pointer-events:none; z-index:100; transition: 1s; transform:translate(-50%,-50%);`;
+            document.body.appendChild(d);
+            setTimeout(()=> { d.style.top = (parseFloat(n.style.top)-50)+'px'; d.style.opacity = 0; }, 50);
+            setTimeout(()=> d.remove(), 1000);
+        }
+
+        function screenShake() { document.body.classList.add('shake'); setTimeout(()=>document.body.classList.remove('shake'), 300); }
+        function flash() { const f = document.getElementById('flash-overlay'); f.style.opacity = 1; setTimeout(()=>f.style.opacity=0, 200); }
+    </script>
+</body>
+</html>
