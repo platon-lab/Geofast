@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Битва Улюбленців - Platon Games</title>
+    <title>Битва Улюбленців - Нова Ера</title>
     <style>
         :root {
             --bg-color: #050410;
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --neon-glow: 0 0 10px rgba(120, 0, 255, 0.5);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --neon-glow: 0 0 15px rgba(120, 0, 255, 0.6);
             --text-color: #f0f0f0;
             --accent: #b026ff;
             --bot-color: #ff3366;
             --human-color: #00ffcc;
+            --alliance-color: #ff33a1;
         }
 
         * {
@@ -34,14 +35,21 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            animation: bgPulse 10s infinite alternate;
+        }
+
+        @keyframes bgPulse {
+            0% { background-image: radial-gradient(circle at center, #1a1a2e 0%, #050410 100%); }
+            100% { background-image: radial-gradient(circle at center, #231a3e 0%, #02010a 100%); }
         }
 
         .glass {
             background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--glass-border);
             border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
         .screen {
@@ -52,55 +60,58 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            transition: opacity 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             opacity: 0;
+            transform: scale(0.9);
             pointer-events: none;
             z-index: 10;
             padding: 10px;
         }
 
-        .screen.active { opacity: 1; pointer-events: auto; }
+        .screen.active { opacity: 1; transform: scale(1); pointer-events: auto; }
 
-        h1 { font-size: 1.8rem; text-shadow: var(--neon-glow); margin-bottom: 15px; text-align: center; }
-        h2 { font-size: 1.2rem; margin-bottom: 10px; }
+        h1 { font-size: 2rem; text-shadow: var(--neon-glow); margin-bottom: 20px; text-align: center; letter-spacing: 2px; }
+        h2 { font-size: 1.4rem; margin-bottom: 15px; text-shadow: 0 0 5px rgba(255,255,255,0.5); }
 
         .btn {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.0));
             border: 1px solid var(--glass-border);
             color: white;
-            padding: 10px 20px;
-            margin: 5px;
+            padding: 12px 24px;
+            margin: 8px;
             font-size: 1rem;
-            border-radius: 10px;
+            border-radius: 12px;
             cursor: pointer;
-            transition: 0.2s;
+            transition: all 0.3s ease;
             font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
-        .btn:active { transform: scale(0.95); background: var(--accent); }
+        .btn:hover { background: rgba(255, 255, 255, 0.15); box-shadow: 0 0 15px var(--accent); }
+        .btn:active { transform: scale(0.92); background: var(--accent); }
+        .btn:disabled { opacity: 0.3; pointer-events: none; }
 
-        .char-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
-        }
+        .char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
 
         .char-card {
-            padding: 8px;
+            padding: 12px;
             text-align: center;
             border: 2px solid transparent;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
+            border-radius: 15px;
+            transition: 0.3s;
         }
 
         .char-card img {
-            width: 50px; height: 50px;
+            width: 55px; height: 55px;
             border-radius: 50%;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             background: #111;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
-        .char-card.selected { border-color: var(--human-color); box-shadow: 0 0 10px var(--human-color); }
+        .char-card.selected { border-color: var(--human-color); box-shadow: 0 0 15px var(--human-color); transform: translateY(-5px); }
 
         /* Arena */
         #arena { position: relative; width: 100%; height: 100%; }
@@ -109,97 +120,127 @@
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 1rem;
+            font-size: 1.2rem;
+            font-weight: bold;
             text-align: center;
-            padding: 15px;
-            width: 200px;
+            padding: 20px;
+            width: 220px;
             z-index: 5;
             pointer-events: none;
+            box-shadow: 0 0 30px rgba(176, 38, 255, 0.2);
         }
 
         .player-node {
             position: absolute;
-            width: 80px;
-            height: 100px;
+            width: 90px;
+            height: 110px;
             display: flex;
             flex-direction: column;
             align-items: center;
             transform: translate(-50%, -50%);
-            transition: all 0.5s ease;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             z-index: 10;
         }
 
         .player-node img {
-            width: 55px; height: 55px;
+            width: 60px; height: 60px;
             border-radius: 50%;
-            border: 2px solid #444;
+            border: 3px solid #333;
             transition: 0.3s;
             object-fit: cover;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.6);
         }
 
-        .player-node .name { font-size: 0.7rem; font-weight: bold; margin-top: 3px; }
-        .player-node .hp { font-size: 0.6rem; color: #ff4d4d; text-align: center; }
+        .player-node .name { font-size: 0.75rem; font-weight: 800; margin-top: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        .player-node .hp { font-size: 0.65rem; color: #ff4d4d; text-align: center; margin-top: 2px; }
+        .player-node .status { font-size: 0.7rem; margin-top: 2px; }
 
-        .player-node.active img { border-color: var(--accent); box-shadow: 0 0 15px var(--accent); transform: scale(1.1); }
-        .player-node.dead img { filter: grayscale(1) opacity(0.5); }
+        .player-node.active img { border-color: var(--accent); box-shadow: 0 0 25px var(--accent); transform: scale(1.15); }
+        .player-node.dead img { filter: grayscale(1) brightness(0.4); border-color: #222; box-shadow: none; }
         
         .player-node.targetable img {
             border-color: #ffeb3b;
-            animation: pulse 1s infinite;
+            box-shadow: 0 0 20px rgba(255, 235, 59, 0.6);
+            animation: pulse 1s infinite alternate;
+            cursor: crosshair;
         }
+
+        .player-node.ally img { border-color: var(--alliance-color); box-shadow: 0 0 20px var(--alliance-color); }
 
         @keyframes pulse {
             0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
+            100% { transform: scale(1.08); }
         }
 
         .action-bar {
             position: absolute;
-            bottom: 20px; left: 50%;
-            transform: translateX(-50%);
+            bottom: 15px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
             display: flex;
-            gap: 8px;
-            padding: 10px;
+            gap: 5px;
+            padding: 8px;
             z-index: 20;
             opacity: 0;
             pointer-events: none;
-            width: 95%;
-            justify-content: center;
-            overflow-x: auto;
+            width: 98%;
+            max-width: 500px;
+            justify-content: flex-start; /* Для зручної прокрутки */
+            overflow-x: auto; /* Горизонтальна прокрутка, якщо не влазить */
+            scrollbar-width: none; /* Ховаємо скроллбар на Firefox */
+            transition: all 0.4s ease;
         }
 
-        .action-bar.visible { opacity: 1; pointer-events: auto; }
+        .action-bar.visible { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
 
         .action-btn {
-            min-width: 55px;
-            padding: 8px;
+            min-width: 50px; /* Вужчі кнопки */
+            flex: 0 0 auto; /* Не даємо їм стискатися */
+            padding: 5px 8px; /* Мінімальний падінг */
             text-align: center;
             border-radius: 10px;
+            transition: 0.2s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
-        .action-btn.disabled { opacity: 0.2; pointer-events: none; }
-        .action-btn .emoji { font-size: 1.2rem; }
-        .action-btn .desc { font-size: 0.5rem; font-weight: bold; }
+        .action-btn:hover:not(.disabled) { transform: translateY(-5px); background: rgba(255,255,255,0.15); }
+        .action-btn:active:not(.disabled) { transform: scale(0.9); }
+        .action-btn.disabled { opacity: 0.25; pointer-events: none; filter: grayscale(1); }
+        
+        .action-btn .emoji { font-size: 1.5rem; margin-bottom: 3px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+        .action-btn .desc { font-size: 0.55rem; font-weight: bold; text-transform: uppercase; }
 
         .projectile {
             position: absolute;
-            font-size: 1.5rem;
+            font-size: 2rem;
             z-index: 100;
-            transition: all 0.6s linear;
+            transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5));
         }
 
-        .shake { animation: shake 0.3s; }
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake {
-            0% { transform: translate(2px, 2px); }
-            25% { transform: translate(-2px, -2px); }
-            50% { transform: translate(2px, -2px); }
-            100% { transform: translate(0, 0); }
+            10%, 90% { transform: translate3d(-2px, -2px, 0); }
+            20%, 80% { transform: translate3d(3px, 3px, 0); }
+            30%, 50%, 70% { transform: translate3d(-5px, -5px, 0); }
+            40%, 60% { transform: translate3d(5px, 5px, 0); }
         }
 
         .flash {
             position: fixed; top:0; left:0; width:100%; height:100%;
             background: white; opacity: 0; pointer-events: none; z-index: 1000;
+            transition: opacity 0.2s;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 999;
+            transition: all 0.6s cubic-bezier(0.1, 0.8, 0.3, 1);
         }
     </style>
 </head>
@@ -215,20 +256,20 @@
     </div>
 
     <div id="char-select-screen" class="screen glass">
-        <h2 id="char-select-title">Вибір</h2>
+        <h2 id="char-select-title">Обери Героя</h2>
         <div class="char-grid" id="char-grid"></div>
-        <button class="btn" id="start-game-btn" onclick="startGame()" disabled>БИТВА!</button>
+        <button class="btn" id="start-game-btn" onclick="startGame()" disabled>🚀 ПОГНАЛИ!</button>
     </div>
 
     <div id="sandbox-screen" class="screen glass">
-        <h2>Пісочниця</h2>
-        <div id="sandbox-config" style="overflow-y:auto; width:100%; margin-bottom:10px;"></div>
-        <button class="btn" onclick="startSandboxGame()">ПУСК</button>
+        <h2>Налаштування Пісочниці</h2>
+        <div id="sandbox-config" style="overflow-y:auto; width:100%; max-height: 50vh; margin-bottom:15px; padding:10px;"></div>
+        <button class="btn" onclick="startSandboxGame()">ПУСК 🎮</button>
     </div>
 
     <div id="game-screen" class="screen">
         <div id="arena">
-            <div class="center-indicator glass" id="center-info">...</div>
+            <div class="center-indicator glass" id="center-info">Готуємо арену...</div>
             <div id="players-container"></div>
             <div class="action-bar glass" id="action-bar"></div>
         </div>
@@ -244,12 +285,14 @@
             { id: 'bark', name: 'Барк', img: 'Bark.png' }
         ];
 
+        // Додано новий предмет: Молоток 🔨 та оновлено опис Хіла (створює альянс)
         const ACTIONS = [
             { id: 'dot', emoji: '🎯', name: 'Пуля', desc: '-1 HP', chance: 0.9, type: 'attack' },
             { id: 'grenade', emoji: '💣', name: 'Граната', desc: '-2 HP', chance: 0.6, type: 'attack' },
             { id: 'nuke', emoji: '☢️', name: 'Ядерка', desc: '-6 HP', chance: 0.3, type: 'attack', cost: 'nukes' },
             { id: 'poison', emoji: '☠️', name: 'Отрута', desc: 'Хід -1', chance: 0.4, type: 'attack' },
-            { id: 'heal', emoji: '❤️', name: 'Хіл', desc: '+1 HP', chance: 0.5, type: 'support' },
+            { id: 'hammer', emoji: '🔨', name: 'Молоток', desc: 'Б\'є Альянс', chance: 0.4, type: 'attack' },
+            { id: 'heal', emoji: '❤️', name: 'Альянс', desc: '+1 HP & Дружба', chance: 0.5, type: 'support' },
             { id: 'revive', emoji: '🔮', name: 'Респавн', desc: 'HP 2', chance: 0.2, type: 'support' }
         ];
 
@@ -257,32 +300,60 @@
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
         function playSound(type) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
 
             if(type === 'shoot') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(400, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
-                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(); osc.stop(now + 0.1);
+                osc.type = 'square'; osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+                gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(); osc.stop(now + 0.15);
             } else if(type === 'boom') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
-                osc.frequency.exponentialRampToValueAtTime(10, now + 0.4);
-                gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0, now + 0.4);
-                osc.start(); osc.stop(now + 0.4);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(10, now + 0.5);
+                gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                osc.start(); osc.stop(now + 0.5);
             } else if(type === 'heal') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(500, now);
-                osc.frequency.exponentialRampToValueAtTime(900, now + 0.2);
-                gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
+                gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(); osc.stop(now + 0.3);
+            } else if(type === 'break') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now);
+                osc.frequency.linearRampToValueAtTime(50, now + 0.2);
+                gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
                 osc.start(); osc.stop(now + 0.2);
+            }
+        }
+
+        function createParticles(x, y, color) {
+            for(let i=0; i<12; i++) {
+                let p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = x + 'px'; p.style.top = y + 'px';
+                p.style.width = (Math.random() * 8 + 4) + 'px';
+                p.style.height = p.style.width;
+                p.style.background = color;
+                p.style.boxShadow = `0 0 10px ${color}`;
+                document.body.appendChild(p);
+                
+                setTimeout(() => {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * 80 + 30;
+                    p.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px) scale(0)`;
+                    p.style.opacity = '0';
+                }, 10);
+                setTimeout(() => p.remove(), 600);
             }
         }
 
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
+            if(audioCtx.state === 'suspended') audioCtx.resume();
         }
 
         function goToModeSelect(m) {
@@ -291,7 +362,7 @@
             CHARACTERS.forEach(char => {
                 const card = document.createElement('div');
                 card.className = 'char-card glass';
-                card.innerHTML = `<img src="${char.img}"><div>${char.name}</div>`;
+                card.innerHTML = `<img src="${char.img}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'50\\' height=\\'50\\'><rect width=\\'50\\' height=\\'50\\' fill=\\'%23444\\'/></svg>'"><div>${char.name}</div>`;
                 card.onclick = () => {
                     if (mode === 1) { selectedChars = [char.id]; document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected')); card.classList.add('selected'); }
                     else { card.classList.toggle('selected'); if(selectedChars.includes(char.id)) selectedChars = selectedChars.filter(x => x!==char.id); else selectedChars.push(char.id); }
@@ -306,20 +377,22 @@
             mode = 'sandbox'; const config = document.getElementById('sandbox-config'); config.innerHTML = '';
             players = CHARACTERS.map(c => ({ ...c, hp: 10, nukes: 1, included: true }));
             players.forEach((p, i) => {
-                const div = document.createElement('div'); div.className = 'glass'; div.style.margin='5px'; div.style.padding='5px';
-                div.innerHTML = `<input type="checkbox" checked onchange="players[${i}].included=this.checked"> ${p.name} HP:<input type="number" value="10" style="width:40px" onchange="players[${i}].hp=parseInt(this.value)">`;
+                const div = document.createElement('div'); div.className = 'glass'; div.style.margin='8px'; div.style.padding='10px'; div.style.display='flex'; div.style.alignItems='center'; div.style.gap='10px';
+                div.innerHTML = `<input type="checkbox" checked onchange="players[${i}].included=this.checked" style="width:20px;height:20px;"> 
+                                 <strong style="flex:1">${p.name}</strong> 
+                                 HP: <input type="number" value="10" style="width:50px; border-radius:5px; border:none; padding:5px; text-align:center;" onchange="players[${i}].hp=parseInt(this.value)">`;
                 config.appendChild(div);
             });
             showScreen('sandbox-screen');
         }
 
         function startGame() {
-            players = CHARACTERS.map(c => ({ ...c, hp: Math.floor(Math.random()*15)+5, nukes: 1, isBot: !selectedChars.includes(c.id), poison: 0, alive: true }));
+            players = CHARACTERS.map(c => ({ ...c, hp: Math.floor(Math.random()*15)+5, nukes: 1, isBot: !selectedChars.includes(c.id), poison: 0, alive: true, ally: null }));
             initArena();
         }
 
         function startSandboxGame() {
-            players = players.filter(p => p.included).map(p => ({ ...p, alive: true, poison: 0, isBot: false }));
+            players = players.filter(p => p.included).map(p => ({ ...p, alive: true, poison: 0, isBot: false, ally: null }));
             initArena();
         }
 
@@ -338,17 +411,28 @@
             const container = document.getElementById('players-container'); container.innerHTML = '';
             const radius = Math.min(window.innerWidth, window.innerHeight) * 0.35;
             const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+            
             players.forEach((p, i) => {
                 const angle = (i / players.length) * 2 * Math.PI - Math.PI/2;
                 const node = document.createElement('div');
                 node.className = `player-node ${p.alive ? '' : 'dead'}`;
+                if (p.ally !== null) node.classList.add('ally');
                 node.id = `node-${i}`;
                 node.style.left = `${cx + radius * Math.cos(angle)}px`;
                 node.style.top = `${cy + radius * Math.sin(angle)}px`;
                 node.onclick = () => handleTarget(i);
-                node.innerHTML = `<div class="name" style="color:${p.isBot?'var(--bot-color)':'var(--human-color)'}">${p.name}</div>
-                                  <img src="${p.img}"><div class="hp">${p.alive?'❤️'.repeat(Math.min(p.hp, 5))+(p.hp>5?'+'+p.hp:''):'💀'}</div>
-                                  <div style="font-size:0.5rem">${p.poison>0?'🤢':''} ${p.nukes>0?'☢️':''}</div>`;
+                
+                // Візуалізація альянсу (щит) і статусу
+                let statusHtml = '';
+                if(p.poison > 0) statusHtml += '🤢 ';
+                if(p.nukes > 0) statusHtml += '☢️ ';
+                if(p.ally !== null) statusHtml += '🛡️';
+
+                node.innerHTML = `
+                    <div class="name" style="color:${p.isBot?'var(--bot-color)':'var(--human-color)'}">${p.name}</div>
+                    <img src="${p.img}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'50\\' height=\\'50\\'><rect width=\\'50\\' height=\\'50\\' fill=\\'%23444\\'/></svg>'">
+                    <div class="hp">${p.alive ? '❤️'.repeat(Math.min(p.hp, 5))+(p.hp>5?'+'+p.hp:'') : '💀'}</div>
+                    <div class="status">${statusHtml}</div>`;
                 container.appendChild(node);
             });
         }
@@ -358,7 +442,19 @@
             ACTIONS.forEach((a, i) => {
                 const b = document.createElement('div'); b.className = 'action-btn glass'; b.id = `act-${i}`;
                 b.innerHTML = `<div class="emoji">${a.emoji}</div><div class="desc">${a.name}</div>`;
-                b.onclick = () => { selectedAction = a; document.querySelectorAll('.player-node').forEach((n, idx) => { if(idx!==currentPlayerIndex && (a.id==='revive'?!players[idx].alive:players[idx].alive)) n.classList.add('targetable'); }); };
+                b.onclick = () => { 
+                    selectedAction = a; 
+                    document.querySelectorAll('.player-node').forEach((n, idx) => { 
+                        // Не можна цілитися в себе, або атакувати союзника
+                        let isEnemyAlly = (players[currentPlayerIndex].ally === idx && a.type === 'attack');
+                        let isCorrectLifeState = (a.id === 'revive' ? !players[idx].alive : players[idx].alive);
+                        if(idx !== currentPlayerIndex && isCorrectLifeState && !isEnemyAlly) {
+                            n.classList.add('targetable'); 
+                        } else {
+                            n.classList.remove('targetable');
+                        }
+                    }); 
+                };
                 bar.appendChild(b);
             });
         }
@@ -367,11 +463,9 @@
             const p = players[currentPlayerIndex];
             if(!p.alive || !gameActive) { passTurn( (currentPlayerIndex+1)%players.length ); return; }
 
-            // ОБРОБКА ОТРУТИ ДЛЯ ВСІХ ГРАВЦІВ[cite: 1]
             players.forEach((target, idx) => {
                 if(target.alive && target.poison > 0) {
-                    target.hp -= 1;
-                    target.poison -= 1;
+                    target.hp -= 1; target.poison -= 1;
                     animateText(idx, "-1 🤢", "#00ffcc");
                     if(target.hp <= 0) { target.alive = false; playSound('boom'); }
                 }
@@ -381,32 +475,51 @@
 
             document.querySelectorAll('.player-node').forEach(n => n.classList.remove('active', 'targetable'));
             document.getElementById(`node-${currentPlayerIndex}`).classList.add('active');
-            setCenterText(`Хід: ${p.name}`);
+            setCenterText(`Хід: ${p.name}`, "white");
 
-            if(p.isBot) { await new Promise(r => setTimeout(r, 1000)); botLogic(); }
-            else { 
+            if(p.isBot) { 
+                await new Promise(r => setTimeout(r, 1200)); 
+                botLogic(); 
+            } else { 
                 document.getElementById('action-bar').classList.add('visible');
-                // Випадкова доступність кнопок
+                
+                let availableCount = 0;
                 ACTIONS.forEach((a, i) => {
                     const btn = document.getElementById(`act-${i}`);
-                    const available = Math.random() < a.chance && (a.cost==='nukes'?p.nukes>0:true);
+                    let available = Math.random() < a.chance && (a.cost==='nukes'?p.nukes>0:true);
+                    if (available) availableCount++;
                     btn.classList.toggle('disabled', !available);
                 });
+
+                // ФІКС БАГУ: гарантуємо мінімум 1 доступну дію
+                if(availableCount === 0) {
+                    document.getElementById('act-0').classList.remove('disabled'); // Звичайна пуля завжди бекап
+                }
             }
         }
 
         function botLogic() {
             const acts = ACTIONS.filter(a => Math.random() < a.chance && (a.cost==='nukes'?players[currentPlayerIndex].nukes>0:true));
             const a = acts.length ? acts[Math.floor(Math.random()*acts.length)] : ACTIONS[0];
-            const targets = players.map((p,i)=>i).filter(i => i!==currentPlayerIndex && (a.id==='revive'?!players[i].alive:players[i].alive));
+            
+            // Бот не атакує свого союзника
+            const targets = players.map((p,i)=>i).filter(i => {
+                let isEnemyAlly = (players[currentPlayerIndex].ally === i && a.type === 'attack');
+                return i !== currentPlayerIndex && (a.id === 'revive' ? !players[i].alive : players[i].alive) && !isEnemyAlly;
+            });
+
             if(targets.length) executeAction(targets[Math.floor(Math.random()*targets.length)], a);
             else passTurn((currentPlayerIndex+1)%players.length);
         }
 
         function handleTarget(i) {
             if(!selectedAction || i === currentPlayerIndex) return;
-            if(selectedAction.id==='revive' && players[i].alive) return;
-            if(selectedAction.id!=='revive' && !players[i].alive) return;
+            if(selectedAction.id === 'revive' && players[i].alive) return;
+            if(selectedAction.id !== 'revive' && !players[i].alive) return;
+            
+            // Захист від удару по союзнику
+            if(players[currentPlayerIndex].ally === i && selectedAction.type === 'attack') return;
+
             executeAction(i, selectedAction);
         }
 
@@ -417,25 +530,76 @@
             
             const attacker = players[currentPlayerIndex];
             const target = players[tIdx];
-            if(a.cost==='nukes') attacker.nukes--;
+            if(a.cost === 'nukes') attacker.nukes--;
 
-            playSound('shoot');
+            playSound(a.id === 'hammer' ? 'shoot' : 'shoot');
             await animateProjectile(currentPlayerIndex, tIdx, a.emoji);
 
-            if(a.id === 'dot') target.hp -= 1;
-            else if(a.id === 'grenade') { target.hp -= 2; playSound('boom'); screenShake(); }
-            else if(a.id === 'nuke') { target.hp -= 6; playSound('boom'); flash(); screenShake(); }
-            else if(a.id === 'poison') target.poison = 3;
-            else if(a.id === 'heal') { target.hp += 1; playSound('heal'); }
-            else if(a.id === 'revive') { target.alive = true; target.hp = 2; playSound('heal'); }
+            const tNode = document.getElementById(`node-${tIdx}`);
+            const rect = tNode.getBoundingClientRect();
+            const px = rect.left + rect.width/2;
+            const py = rect.top + rect.height/2;
 
-            if(target.hp <= 0) { target.hp = 0; target.alive = false; }
+            if(a.id === 'dot') { 
+                target.hp -= 1; 
+                createParticles(px, py, '#ff0000'); 
+            }
+            else if(a.id === 'grenade') { 
+                target.hp -= 2; playSound('boom'); screenShake(); 
+                createParticles(px, py, '#ffaa00'); 
+            }
+            else if(a.id === 'nuke') { 
+                target.hp -= 6; playSound('boom'); flash(); screenShake(); 
+                createParticles(px, py, '#ff0000'); createParticles(px, py, '#ffeb3b'); 
+            }
+            else if(a.id === 'poison') { 
+                target.poison = 3; 
+                createParticles(px, py, '#00ff44'); 
+            }
+            else if(a.id === 'hammer') {
+                target.hp -= 1; // Легкий урон від молотка
+                createParticles(px, py, '#aaaaaa');
+                // Логіка руйнування альянсу
+                if (target.ally !== null) {
+                    let partnerIdx = target.ally;
+                    playSound('break');
+                    players[partnerIdx].ally = null;
+                    target.ally = null;
+                    animateText(tIdx, "💔 Альянс розбито!", "#ff3366");
+                    animateText(partnerIdx, "💔", "#ff3366");
+                } else {
+                    animateText(tIdx, "🔨 Ауч!", "gray");
+                }
+            }
+            else if(a.id === 'heal') { 
+                target.hp += 1; playSound('heal'); 
+                createParticles(px, py, '#ff33a1');
+                
+                // ЛОГІКА АЛЬЯНСУ ❤️
+                let A = currentPlayerIndex;
+                let B = tIdx;
+
+                // Знищуємо старі альянси
+                if (players[A].ally !== null && players[A].ally !== B) players[players[A].ally].ally = null;
+                if (players[B].ally !== null && players[B].ally !== A) players[players[B].ally].ally = null;
+
+                players[A].ally = B;
+                players[B].ally = A;
+
+                animateText(A, "🤝 Альянс", "var(--alliance-color)");
+                animateText(B, "🤝 Альянс", "var(--alliance-color)");
+            }
+            else if(a.id === 'revive') { 
+                target.alive = true; target.hp = 2; playSound('heal'); 
+                createParticles(px, py, '#00ccff'); 
+            }
+
+            if(target.hp <= 0) { target.hp = 0; target.alive = false; target.ally = null; } // При смерті альянс скидається
             
             renderPlayers();
             if(checkWin()) return;
 
-            // НОВА ЛОГІКА ЧЕРГИ: ХТО ПРИЙНЯВ УДАР, ТОЙ ХОДИТЬ[cite: 1]
-            setTimeout(() => passTurn(tIdx), 800);
+            setTimeout(() => passTurn(tIdx), 900);
         }
 
         function passTurn(nextIdx) {
@@ -450,16 +614,31 @@
 
         function checkWin() {
             const alive = players.filter(p => p.alive);
-            if(alive.length <= 1) {
+            
+            if(alive.length === 1) {
                 gameActive = false;
-                setCenterText(`🏆 ${alive.length?alive[0].name:'НІХТО'} 🏆`, "gold");
-                setTimeout(()=>location.reload(), 3000);
+                setCenterText(`🏆 ${alive[0].name} ПЕРЕМОЖЕЦЬ! 🏆`, "gold");
+                setTimeout(()=>location.reload(), 4000);
+                return true;
+            } 
+            else if (alive.length === 2 && alive[0].ally === players.indexOf(alive[1])) {
+                // Перемога Альянсу!
+                gameActive = false;
+                setCenterText(`🏆 ПЕРЕМОГА АЛЬЯНСУ 🏆\n${alive[0].name} 🤝 ${alive[1].name}`, "gold");
+                createParticles(window.innerWidth/2, window.innerHeight/2, 'gold');
+                setTimeout(()=>location.reload(), 4000);
                 return true;
             }
             return false;
         }
 
-        function setCenterText(t, c="white") { const el = document.getElementById('center-info'); el.innerText = t; el.style.color = c; }
+        function setCenterText(t, c="white") { 
+            const el = document.getElementById('center-info'); 
+            el.innerText = t; 
+            el.style.color = c; 
+            el.style.transform = "translate(-50%, -50%) scale(1.1)";
+            setTimeout(() => el.style.transform = "translate(-50%, -50%) scale(1)", 200);
+        }
         
         function animateProjectile(f, t, e) {
             return new Promise(res => {
@@ -468,20 +647,20 @@
                 p.style.left = fNode.style.left; p.style.top = fNode.style.top;
                 document.body.appendChild(p);
                 setTimeout(() => { p.style.left = tNode.style.left; p.style.top = tNode.style.top; }, 50);
-                setTimeout(() => { p.remove(); res(); }, 650);
+                setTimeout(() => { p.remove(); res(); }, 550);
             });
         }
 
         function animateText(i, t, c) {
             const n = document.getElementById(`node-${i}`);
             const d = document.createElement('div'); d.innerText = t;
-            d.style.cssText = `position:absolute; left:${n.style.left}; top:${n.style.top}; color:${c}; font-weight:bold; pointer-events:none; z-index:100; transition: 1s; transform:translate(-50%,-50%);`;
+            d.style.cssText = `position:absolute; left:${n.style.left}; top:${n.style.top}; color:${c}; font-weight:900; font-size: 1.2rem; text-shadow: 0 2px 5px rgba(0,0,0,0.8); pointer-events:none; z-index:200; transition: all 1s ease-out; transform:translate(-50%,-50%);`;
             document.body.appendChild(d);
-            setTimeout(()=> { d.style.top = (parseFloat(n.style.top)-50)+'px'; d.style.opacity = 0; }, 50);
+            setTimeout(()=> { d.style.top = (parseFloat(n.style.top)-60)+'px'; d.style.opacity = 0; d.style.transform = "translate(-50%,-50%) scale(1.5)"; }, 50);
             setTimeout(()=> d.remove(), 1000);
         }
 
-        function screenShake() { document.body.classList.add('shake'); setTimeout(()=>document.body.classList.remove('shake'), 300); }
+        function screenShake() { document.body.classList.add('shake'); setTimeout(()=>document.body.classList.remove('shake'), 400); }
         function flash() { const f = document.getElementById('flash-overlay'); f.style.opacity = 1; setTimeout(()=>f.style.opacity=0, 200); }
     </script>
 </body>
