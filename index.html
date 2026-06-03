@@ -290,12 +290,108 @@
         }
         #sandbox-config-container::-webkit-scrollbar { width: 6px; }
         #sandbox-config-container::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+
+        /* LEGENDARY MAYO BUTTON */
+        .action-btn.legendary {
+            background: linear-gradient(135deg, #ffd700, #ff8c00, #ffd700) !important;
+            background-size: 200% 200% !important;
+            animation: legendaryShimmer 1.5s infinite, legendaryPulse 0.8s infinite alternate !important;
+            border: 2px solid gold !important;
+            box-shadow: 0 0 20px #ffd700, 0 0 40px #ff8c00 !important;
+        }
+        @keyframes legendaryShimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes legendaryPulse {
+            0% { box-shadow: 0 0 15px #ffd700, 0 0 30px #ff8c00; transform: scale(1); }
+            100% { box-shadow: 0 0 30px #ffd700, 0 0 60px #ff8c00, 0 0 80px gold; transform: scale(1.05); }
+        }
+
+        /* MAYO EXPLOSION OVERLAY */
+        #mayo-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            z-index: 9999;
+            display: none;
+            overflow: hidden;
+        }
+        #mayo-canvas {
+            position: absolute; top:0; left:0;
+            width:100%; height:100%;
+        }
+        #mayo-winner-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: 900;
+            color: gold;
+            text-shadow: 0 0 30px gold, 0 0 60px orange;
+            text-align: center;
+            z-index: 10001;
+            display: none;
+            animation: winnerPulse 0.5s infinite alternate;
+        }
+        @keyframes winnerPulse {
+            0% { transform: translate(-50%,-50%) scale(1); }
+            100% { transform: translate(-50%,-50%) scale(1.1); }
+        }
+
+        /* Зоряний фон гри */
+        #star-bg {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            pointer-events: none; z-index: 0; overflow: hidden;
+        }
+        .star-particle {
+            position: absolute;
+            border-radius: 50%;
+            background: white;
+            animation: twinkle linear infinite;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.5); }
+        }
+
+        /* Красивий ефект на активного гравця */
+        .player-node.active::before {
+            content: '';
+            position: absolute;
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(176,38,255,0.4) 0%, transparent 70%);
+            animation: activePulseRing 1s infinite;
+            top: 15px; left: 5px;
+            pointer-events: none;
+        }
+        @keyframes activePulseRing {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* Ефект ореолу на іконці під час ходу */
+        .player-node.active img {
+            animation: activeGlow 1s infinite alternate !important;
+        }
+        @keyframes activeGlow {
+            0% { box-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent); }
+            100% { box-shadow: 0 0 40px #ff00ff, 0 0 80px #b026ff; }
+        }
+
+        /* Красивий трейл для снаряда */
+        .projectile { filter: drop-shadow(0 0 8px currentColor) !important; }
         
     </style>
 </head>
 <body>
 
+    <div id="star-bg"></div>
     <div id="flash-overlay" class="flash"></div>
+    <div id="mayo-overlay">
+        <canvas id="mayo-canvas"></canvas>
+        <div id="mayo-winner-text"></div>
+    </div>
 
     <div id="main-menu" class="screen active">
         <h1>PLATON GAMES</h1>
@@ -363,7 +459,30 @@
             { id: 'shield', emoji: '💠', name: 'Щит', desc: 'Блок урону', chance: 0.4, type: 'support', self: true },
             { id: 'medkit', emoji: '🩹', name: 'Аптечка', desc: '+3 HP', chance: 0.35, type: 'support', self: true },
             { id: 'heal', emoji: '❤️', name: 'Альянс', desc: '+1 HP & Дружба', chance: 0.5, type: 'support' },
-            { id: 'revive', emoji: '🔮', name: 'Респавн', desc: 'HP 2', chance: 0.2, type: 'support' }
+            { id: 'revive', emoji: '🔮', name: 'Респавн', desc: 'HP 2', chance: 0.2, type: 'support' },
+            // 20 нових предметів
+            { id: 'sword', emoji: '⚔️', name: 'Меч', desc: '-4 HP', chance: 0.35, type: 'attack' },
+            { id: 'bomb', emoji: '💥', name: 'Бомба', desc: '-3 HP Вибух', chance: 0.45, type: 'attack' },
+            { id: 'thunderbolt', emoji: '⚡', name: 'Блискавка', desc: '-4 HP', chance: 0.3, type: 'attack' },
+            { id: 'fire', emoji: '🔥', name: 'Вогонь', desc: '-2 HP Опік', chance: 0.5, type: 'attack' },
+            { id: 'arrow', emoji: '🏹', name: 'Стріла', desc: '-2 HP', chance: 0.65, type: 'attack' },
+            { id: 'tornado', emoji: '🌪️', name: 'Торнадо', desc: '-3 HP', chance: 0.35, type: 'attack' },
+            { id: 'axe', emoji: '🪓', name: 'Сокира', desc: '-3 HP', chance: 0.4, type: 'attack' },
+            { id: 'skull', emoji: '💀', name: 'Прокляття', desc: '-5 HP Темрява', chance: 0.2, type: 'attack' },
+            { id: 'explosion', emoji: '🧨', name: 'Петарда', desc: '-2 HP Оглушення', chance: 0.5, type: 'attack' },
+            { id: 'comet', emoji: '☄️', name: 'Комета', desc: '-7 HP Рідко', chance: 0.15, type: 'attack' },
+            { id: 'magic', emoji: '🪄', name: 'Магія', desc: '+5 HP Собі', chance: 0.3, type: 'support', self: true },
+            { id: 'potion', emoji: '🧪', name: 'Зілля', desc: '+4 HP', chance: 0.35, type: 'support' },
+            { id: 'star', emoji: '⭐', name: 'Зірка', desc: '+2 HP & Щит', chance: 0.3, type: 'support', self: true },
+            { id: 'cookie', emoji: '🍪', name: 'Печиво', desc: '+2 HP Смачно', chance: 0.5, type: 'support', self: true },
+            { id: 'diamond', emoji: '💎', name: 'Діамант', desc: 'Двощит', chance: 0.2, type: 'support', self: true },
+            { id: 'bubble', emoji: '🫧', name: 'Бульбашка', desc: 'Заморозка собі', chance: 0.4, type: 'support', self: true },
+            { id: 'mushroom', emoji: '🍄', name: 'Гриб', desc: 'Рандом ефект', chance: 0.45, type: 'attack' },
+            { id: 'robot', emoji: '🤖', name: 'Робот', desc: '-2 HP x2 цілі', chance: 0.3, type: 'attack' },
+            { id: 'eye', emoji: '👁️', name: 'Всевидяче Oko', desc: '-3 HP Не промах', chance: 0.35, type: 'attack' },
+            { id: 'dragon', emoji: '🐉', name: 'Дракон', desc: '-6 HP Вогонь', chance: 0.18, type: 'attack' },
+            // РІДКІСНИЙ ПРЕДМЕТ - МАЙОНЕЗ (1%)
+            { id: 'mayo', emoji: '🥫', name: '✨МАЙОНЕЗ✨', desc: '1% ЛЕГЕНДА', chance: 0.01, type: 'special', special: true, rarity: 'legendary' },
         ];
 
         let mode = 1, selectedChars = [], bannedChars = [], players = [], currentPlayerIndex = -1, selectedAction = null, gameActive = false;
@@ -553,17 +672,36 @@
 
         function renderPlayers() {
             const container = document.getElementById('players-container'); container.innerHTML = '';
-            const radius = Math.min(window.innerWidth, window.innerHeight) * 0.35;
-            const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+            const W = window.innerWidth, H = window.innerHeight;
+            const cx = W / 2, cy = H / 2;
+            const alive_count = players.length;
             
             players.forEach((p, i) => {
-                const angle = (i / players.length) * 2 * Math.PI - Math.PI/2;
+                let px, py;
+                
+                if (alive_count >= 11) {
+                    // Квадратна сітка по всьому екрану
+                    const cols = Math.ceil(Math.sqrt(alive_count * W / H));
+                    const rows = Math.ceil(alive_count / cols);
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+                    const padX = W * 0.08, padY = H * 0.1;
+                    px = padX + col * (W - padX*2) / Math.max(cols-1, 1);
+                    py = padY + row * (H - padY*2) / Math.max(rows-1, 1);
+                } else {
+                    // Звичайне коло
+                    const radius = Math.min(W, H) * 0.35;
+                    const angle = (i / alive_count) * 2 * Math.PI - Math.PI/2;
+                    px = cx + radius * Math.cos(angle);
+                    py = cy + radius * Math.sin(angle);
+                }
+
                 const node = document.createElement('div');
                 node.className = `player-node ${p.alive ? '' : 'dead'}`;
                 if (p.ally !== null) node.classList.add('ally');
                 node.id = `node-${i}`;
-                node.style.left = `${cx + radius * Math.cos(angle)}px`;
-                node.style.top = `${cy + radius * Math.sin(angle)}px`;
+                node.style.left = `${px}px`;
+                node.style.top = `${py}px`;
                 node.onclick = () => handleTarget(i);
                 
                 let statusHtml = '';
@@ -585,7 +723,10 @@
         function renderActionBar() {
             const bar = document.getElementById('action-bar'); bar.innerHTML = '';
             ACTIONS.forEach((a, i) => {
-                const b = document.createElement('div'); b.className = 'action-btn glass'; b.id = `act-${i}`;
+                const b = document.createElement('div'); 
+                b.className = 'action-btn glass'; 
+                if(a.rarity === 'legendary') b.classList.add('legendary');
+                b.id = `act-${i}`;
                 b.innerHTML = `<div class="emoji">${a.emoji}</div><div class="desc">${a.name}</div>`;
                 b.onclick = () => { 
                     selectedAction = a; 
@@ -593,7 +734,10 @@
                         let isEnemyAlly = (players[currentPlayerIndex].ally === idx && a.type === 'attack');
                         let isCorrectLifeState = (a.id === 'revive' ? !players[idx].alive : players[idx].alive);
                         
-                        if(a.self) {
+                        if(a.special) {
+                            // Mayo - тільки центр, не на гравців
+                            n.classList.remove('targetable');
+                        } else if(a.self) {
                             if(idx === currentPlayerIndex) n.classList.add('targetable');
                             else n.classList.remove('targetable');
                         } else {
@@ -603,7 +747,11 @@
                                 n.classList.remove('targetable');
                             }
                         }
-                    }); 
+                    });
+                    // Mayo - одразу виконуємо без цілі
+                    if(a.special) {
+                        executeAction(-1, a);
+                    }
                 };
                 bar.appendChild(b);
             });
@@ -648,6 +796,12 @@
                     let available = Math.random() < a.chance && (a.cost==='nukes'?p.nukes>0:true);
                     if (available) availableCount++;
                     btn.classList.toggle('disabled', !available);
+                    // Mayo завжди виглядає особливо навіть коли disabled
+                    if(a.rarity === 'legendary' && available) {
+                        btn.classList.remove('disabled');
+                        // Показати спалах коли майонез доступний
+                        showMayoAppear();
+                    }
                 });
 
                 if(availableCount === 0) document.getElementById('act-0').classList.remove('disabled');
@@ -689,14 +843,22 @@
             document.querySelectorAll('.player-node').forEach(n => n.classList.remove('targetable'));
             
             const attacker = players[currentPlayerIndex];
-            const target = players[tIdx];
             if(a.cost === 'nukes') attacker.nukes--;
 
-            if(!a.self) {
+            // МАЙОНЕЗ - особлива анімація!
+            if(a.id === 'mayo') {
+                await triggerMayoEvent(currentPlayerIndex);
+                return;
+            }
+
+            if(!a.self && tIdx >= 0) {
                 playSound(a.id === 'hammer' ? 'shoot' : (a.id === 'laser' ? 'shoot' : 'shoot'));
                 await animateProjectile(currentPlayerIndex, tIdx, a.emoji);
             }
 
+            if(tIdx < 0) { passTurn((currentPlayerIndex+1)%players.length); return; }
+
+            const target = players[tIdx];
             const tNode = document.getElementById(`node-${tIdx}`);
             const rect = tNode.getBoundingClientRect();
             const px = rect.left + rect.width/2;
@@ -710,6 +872,21 @@
             else if(a.id === 'laser') dmg = 5;
             else if(a.id === 'vampire') dmg = 2;
             else if(a.id === 'hammer') dmg = 1;
+            // Нові предмети
+            else if(a.id === 'sword') dmg = 4;
+            else if(a.id === 'bomb') dmg = 3;
+            else if(a.id === 'thunderbolt') dmg = 4;
+            else if(a.id === 'fire') dmg = 2;
+            else if(a.id === 'arrow') dmg = 2;
+            else if(a.id === 'tornado') dmg = 3;
+            else if(a.id === 'axe') dmg = 3;
+            else if(a.id === 'skull') dmg = 5;
+            else if(a.id === 'explosion') dmg = 2;
+            else if(a.id === 'comet') dmg = 7;
+            else if(a.id === 'eye') dmg = 3;
+            else if(a.id === 'dragon') dmg = 6;
+            else if(a.id === 'robot') dmg = 2;
+            else if(a.id === 'mushroom') dmg = Math.floor(Math.random()*6)+1;
 
             if (dmg > 0) {
                 if (target.shield) {
@@ -719,10 +896,10 @@
                     createParticles(px, py, '#00ffff');
                 } else {
                     target.hp -= dmg;
-                    if(a.id === 'grenade' || a.id === 'nuke') { playSound('boom'); screenShake(); }
-                    if(a.id === 'nuke') flash();
+                    if(a.id === 'grenade' || a.id === 'nuke' || a.id === 'bomb' || a.id === 'comet' || a.id === 'dragon') { playSound('boom'); screenShake(); }
+                    if(a.id === 'nuke' || a.id === 'comet') flash();
                     
-                    let pColor = a.id==='laser'?'#ff00ff':(a.id==='sniper'?'#ffffff':'#ff0000');
+                    let pColor = a.id==='laser'||a.id==='dragon'?'#ff00ff':(a.id==='sniper'||a.id==='eye'?'#ffffff':(a.id==='thunderbolt'?'#ffff00':(a.id==='fire'?'#ff6600':'#ff0000')));
                     createParticles(px, py, pColor);
 
                     if(a.id === 'vampire') { 
@@ -740,6 +917,21 @@
                             animateText(partnerIdx, "💔", "#ff3366");
                         } else {
                             animateText(tIdx, "🔨 Ауч!", "gray");
+                        }
+                    }
+                    if(a.id === 'fire') { target.poison = Math.max(target.poison, 2); animateText(tIdx, "🔥 Опік!", "#ff6600"); }
+                    if(a.id === 'explosion') { target.frozen = Math.max(target.frozen, 1); animateText(tIdx, "😵 Оглушено", "#ffff00"); }
+                    if(a.id === 'skull') { target.poison = Math.max(target.poison, 3); animateText(tIdx, "💀 Прокляття!", "#aa00ff"); createParticles(px,py,'#aa00ff'); }
+                    if(a.id === 'mushroom') { animateText(tIdx, `🍄 -${dmg} HP`, "#ff00cc"); }
+                    if(a.id === 'robot') {
+                        // Бє двох цілей
+                        const secondTargets = players.map((_,ii)=>ii).filter(ii=>ii!==currentPlayerIndex&&ii!==tIdx&&players[ii].alive);
+                        if(secondTargets.length) {
+                            const sec = secondTargets[Math.floor(Math.random()*secondTargets.length)];
+                            players[sec].hp -= 2;
+                            animateText(sec, "🤖 -2 HP", "#888888");
+                            createParticles(px,py,'#888888');
+                            if(players[sec].hp<=0){players[sec].hp=0;players[sec].alive=false;}
                         }
                     }
                 }
@@ -778,13 +970,32 @@
                 target.alive = true; target.hp = 2; target.poison = 0; target.frozen = 0; playSound('heal'); 
                 createParticles(px, py, '#00ccff'); 
             }
+            // Нові support предмети
+            else if(a.id === 'magic') {
+                attacker.hp += 5; playSound('heal'); createParticles(px, py, '#ff00ff'); animateText(currentPlayerIndex, "🪄 +5 HP", "#ff00ff");
+            }
+            else if(a.id === 'potion') {
+                target.hp += 4; playSound('heal'); createParticles(px, py, '#00ff99'); animateText(tIdx, "🧪 +4 HP", "#00ff99");
+            }
+            else if(a.id === 'star') {
+                attacker.hp += 2; attacker.shield = true; playSound('heal'); createParticles(px, py, '#ffff00'); animateText(currentPlayerIndex, "⭐ +2HP+Щит", "#ffff00");
+            }
+            else if(a.id === 'cookie') {
+                attacker.hp += 2; playSound('heal'); createParticles(px, py, '#ff9900'); animateText(currentPlayerIndex, "🍪 +2 HP Смачно!", "#ff9900");
+            }
+            else if(a.id === 'diamond') {
+                attacker.shield = true; playSound('heal'); createParticles(px, py, '#00ffff'); animateText(currentPlayerIndex, "💎 ДВА ЩИТИ!", "cyan");
+            }
+            else if(a.id === 'bubble') {
+                attacker.frozen = 1; playSound('freeze'); createParticles(px, py, '#aaffff'); animateText(currentPlayerIndex, "🫧 Пауза", "#aaffff");
+            }
 
-            if(target.hp <= 0) { target.hp = 0; target.alive = false; target.ally = null; target.shield = false; }
+            if(target && target.hp <= 0) { target.hp = 0; target.alive = false; target.ally = null; target.shield = false; }
             
             renderPlayers();
             if(checkWin()) return;
 
-            setTimeout(() => passTurn(tIdx), 1000);
+            setTimeout(() => passTurn(tIdx >= 0 ? tIdx : (currentPlayerIndex+1)%players.length), 1000);
         }
 
         function passTurn(nextIdx) {
@@ -846,6 +1057,340 @@
 
         function screenShake() { document.body.classList.add('shake'); setTimeout(()=>document.body.classList.remove('shake'), 400); }
         function flash() { const f = document.getElementById('flash-overlay'); f.style.opacity = 1; setTimeout(()=>f.style.opacity=0, 200); }
+
+        function showMayoAppear() {
+            // Показуємо золотий спалах коли МАЙОНЕЗ доступний
+            const f = document.getElementById('flash-overlay');
+            f.style.background = 'gold';
+            f.style.opacity = 0.3;
+            setTimeout(()=>{ f.style.opacity=0; f.style.background='white'; }, 300);
+            // Текст появи
+            const msg = document.createElement('div');
+            msg.innerHTML = '✨ МАЙОНЕЗ ДОСТУПНИЙ! ✨';
+            msg.style.cssText = `position:fixed;top:20%;left:50%;transform:translate(-50%,-50%);font-size:1.5rem;font-weight:900;color:gold;text-shadow:0 0 20px gold;z-index:9998;pointer-events:none;animation:fadeInOut 2s forwards;`;
+            document.body.appendChild(msg);
+            const style = document.createElement('style');
+            style.textContent = '@keyframes fadeInOut{0%{opacity:0;transform:translate(-50%,-50%) scale(0.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-70%) scale(1)}}';
+            document.head.appendChild(style);
+            setTimeout(()=>msg.remove(), 2000);
+        }
+
+        async function triggerMayoEvent(winnerIdx) {
+            gameActive = false;
+            const winnerName = players[winnerIdx].name;
+            const overlay = document.getElementById('mayo-overlay');
+            const canvas = document.getElementById('mayo-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            overlay.style.display = 'block';
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            let phase = 'launch'; // launch -> earth -> explosion -> moon -> win
+            let t = 0;
+            let rocketY = canvas.height * 0.7;
+            let rocketX = canvas.width * 0.2;
+            let earthScale = 0;
+            let mayoJarY = -100;
+            let mayoJarX = canvas.width * 0.5;
+            let explosionPhase = 0;
+            let moonPhase = false;
+            let stars = Array.from({length:200},()=>({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*2+0.5,twinkle:Math.random()}));
+            let particles3d = [];
+
+            // Draw 3D Earth with canvas
+            function drawEarth(cx, cy, r, rotation) {
+                // Shadow/atmosphere glow
+                const glow = ctx.createRadialGradient(cx-r*0.3, cy-r*0.3, 0, cx, cy, r*1.4);
+                glow.addColorStop(0, 'rgba(100,180,255,0.15)');
+                glow.addColorStop(0.7, 'rgba(30,100,200,0.08)');
+                glow.addColorStop(1, 'transparent');
+                ctx.fillStyle = glow;
+                ctx.beginPath(); ctx.arc(cx, cy, r*1.4, 0, Math.PI*2); ctx.fill();
+
+                // Ocean base
+                const oceanGrad = ctx.createRadialGradient(cx-r*0.3, cy-r*0.3, 0, cx, cy, r);
+                oceanGrad.addColorStop(0, '#5bc8f5');
+                oceanGrad.addColorStop(0.4, '#1a6fa8');
+                oceanGrad.addColorStop(1, '#0a3d6b');
+                ctx.fillStyle = oceanGrad;
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+
+                // Continents (simplified with rotation)
+                ctx.save();
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
+                ctx.fillStyle = '#2ecc71';
+                // Europe/Africa
+                const off = rotation * r * 0.5;
+                ctx.beginPath();
+                ctx.ellipse(cx - r*0.15 + off, cy - r*0.1, r*0.18, r*0.35, 0.2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(cx - r*0.1 + off, cy + r*0.25, r*0.14, r*0.28, -0.1, 0, Math.PI*2); ctx.fill();
+                // Americas
+                ctx.beginPath();
+                ctx.ellipse(cx - r*0.5 + off, cy - r*0.05, r*0.15, r*0.3, 0.15, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(cx - r*0.52 + off, cy + r*0.3, r*0.12, r*0.25, -0.1, 0, Math.PI*2); ctx.fill();
+                // Asia
+                ctx.beginPath();
+                ctx.ellipse(cx + r*0.2 + off, cy - r*0.1, r*0.28, r*0.25, 0.1, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#27ae60';
+                ctx.beginPath();
+                ctx.ellipse(cx + r*0.4 + off, cy + r*0.3, r*0.15, r*0.12, 0.3, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+
+                // Clouds
+                ctx.save();
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.clip();
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                const co = rotation * r * 0.3;
+                ctx.beginPath(); ctx.ellipse(cx - r*0.3 + co, cy - r*0.4, r*0.25, r*0.07, 0.3, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(cx + r*0.1 + co, cy + r*0.2, r*0.2, r*0.06, -0.2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(cx - r*0.05 + co, cy - r*0.2, r*0.18, r*0.05, 0.1, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+
+                // Specular highlight
+                const spec = ctx.createRadialGradient(cx - r*0.35, cy - r*0.35, 0, cx - r*0.2, cy - r*0.2, r*0.6);
+                spec.addColorStop(0, 'rgba(255,255,255,0.3)');
+                spec.addColorStop(1, 'transparent');
+                ctx.fillStyle = spec;
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+
+                // Dark edge
+                const edge = ctx.createRadialGradient(cx+r*0.4, cy+r*0.4, r*0.3, cx, cy, r);
+                edge.addColorStop(0, 'transparent');
+                edge.addColorStop(0.7, 'transparent');
+                edge.addColorStop(1, 'rgba(0,0,30,0.7)');
+                ctx.fillStyle = edge;
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+            }
+
+            function drawMoon(cx, cy, r) {
+                const moonGrad = ctx.createRadialGradient(cx-r*0.3, cy-r*0.3, 0, cx, cy, r);
+                moonGrad.addColorStop(0, '#e8e0c8');
+                moonGrad.addColorStop(0.6, '#c8bfa0');
+                moonGrad.addColorStop(1, '#8a7f68');
+                ctx.fillStyle = moonGrad;
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+                // craters
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                [[cx+r*0.2,cy-r*0.1,r*0.12],[cx-r*0.3,cy+r*0.2,r*0.08],[cx+r*0.05,cy+r*0.3,r*0.06]].forEach(([x,y,cr])=>{
+                    ctx.beginPath(); ctx.arc(x,y,cr,0,Math.PI*2); ctx.fill();
+                });
+                // specular
+                const ms = ctx.createRadialGradient(cx-r*0.3, cy-r*0.3, 0, cx, cy, r*0.8);
+                ms.addColorStop(0, 'rgba(255,255,255,0.25)'); ms.addColorStop(1, 'transparent');
+                ctx.fillStyle = ms;
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+            }
+
+            function drawRocket(x, y, scale=1) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(scale, scale);
+                // Body
+                ctx.fillStyle = '#ddd';
+                ctx.beginPath(); ctx.roundRect(-12, -30, 24, 50, 5); ctx.fill();
+                // Nose
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath(); ctx.moveTo(-12,-30); ctx.lineTo(0,-55); ctx.lineTo(12,-30); ctx.closePath(); ctx.fill();
+                // Window
+                ctx.fillStyle = '#3498db';
+                ctx.beginPath(); ctx.arc(0, -10, 7, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.beginPath(); ctx.arc(-2, -12, 3, 0, Math.PI*2); ctx.fill();
+                // Fins
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath(); ctx.moveTo(-12,15); ctx.lineTo(-25,35); ctx.lineTo(-12,25); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(12,15); ctx.lineTo(25,35); ctx.lineTo(12,25); ctx.closePath(); ctx.fill();
+                // Flame
+                const flameH = 20 + Math.sin(t*0.3)*8;
+                const fg = ctx.createLinearGradient(0,20,0,20+flameH);
+                fg.addColorStop(0,'#fff'); fg.addColorStop(0.3,'#ff6600'); fg.addColorStop(1,'transparent');
+                ctx.fillStyle = fg;
+                ctx.beginPath(); ctx.ellipse(0,20+flameH/2,8,flameH/2,0,0,Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+
+            function drawMayoJar(x, y, scale=1) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(scale, scale);
+                // Jar body
+                ctx.fillStyle = '#fffbe6';
+                ctx.beginPath(); ctx.roundRect(-20, -30, 40, 55, 8); ctx.fill();
+                ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2; ctx.stroke();
+                // Lid
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath(); ctx.roundRect(-22, -38, 44, 12, 4); ctx.fill();
+                // Label
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath(); ctx.roundRect(-15, -15, 30, 25, 3); ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 8px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('MAYO', 0, -5);
+                ctx.fillText('🥚', 0, 5);
+                // Shine
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.beginPath(); ctx.ellipse(-8, -10, 5, 15, -0.3, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+
+            let earthRotation = 0;
+            let explodeParts = [];
+            
+            function animLoop() {
+                if (t % 2 !== 0) { t++; requestAnimationFrame(animLoop); return; }
+                t++;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Space background
+                ctx.fillStyle = '#000010';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Stars
+                stars.forEach(s => {
+                    const tw = Math.sin(t * 0.05 + s.twinkle * 10) * 0.5 + 0.5;
+                    ctx.fillStyle = `rgba(255,255,255,${0.3 + tw * 0.7})`;
+                    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+                });
+
+                if(phase === 'launch') {
+                    // Rocket launching from player position
+                    rocketY -= 2 + t * 0.02;
+                    rocketX += (canvas.width/2 - rocketX) * 0.02;
+                    drawRocket(rocketX, rocketY, 1 + t * 0.01);
+                    // Trail
+                    for(let i=0; i<3; i++) {
+                        ctx.fillStyle = `rgba(255,${100+i*50},0,${0.6-i*0.15})`;
+                        ctx.beginPath(); ctx.arc(rocketX + (Math.random()-0.5)*10, rocketY + 40 + i*15, 5-i, 0, Math.PI*2); ctx.fill();
+                    }
+                    if(t > 120) { phase = 'earth'; t = 0; }
+                }
+
+                else if(phase === 'earth') {
+                    earthScale = Math.min(1, earthScale + 0.01);
+                    earthRotation += 0.005;
+                    const earthR = Math.min(canvas.width, canvas.height) * 0.35 * earthScale;
+                    const ecx = canvas.width/2, ecy = canvas.height/2;
+                    drawEarth(ecx, ecy, earthR, earthRotation);
+                    
+                    // Rocket flies up on the left
+                    drawRocket(canvas.width * 0.1, canvas.height * 0.15 + Math.sin(t*0.1)*5, 0.7);
+
+                    // Mayo jar falls from top
+                    mayoJarY = -80 + t * 2;
+                    mayoJarX = canvas.width / 2;
+                    const jarScale = 0.5 + t * 0.01;
+                    drawMayoJar(mayoJarX, mayoJarY, jarScale);
+
+                    if(mayoJarY > canvas.height/2 - 30) {
+                        phase = 'explosion'; t = 0;
+                        // Create explode particles
+                        for(let i=0;i<60;i++) {
+                            explodeParts.push({
+                                x: canvas.width/2, y: canvas.height/2,
+                                vx: (Math.random()-0.5)*20,
+                                vy: (Math.random()-0.5)*20,
+                                r: Math.random()*20+5,
+                                color: ['#ff6600','#ff0000','#ffcc00','#2ecc71','#3498db','#1a6fa8'][Math.floor(Math.random()*6)],
+                                life: 1
+                            });
+                        }
+                    }
+                }
+
+                else if(phase === 'explosion') {
+                    // Earth exploding
+                    explodeParts.forEach(p => {
+                        p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.015;
+                        ctx.globalAlpha = p.life;
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI*2); ctx.fill();
+                    });
+                    ctx.globalAlpha = 1;
+                    // Big flash
+                    const expAlpha = Math.max(0, 0.8 - t*0.02);
+                    ctx.fillStyle = `rgba(255,200,0,${expAlpha})`;
+                    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, t*15, 0, Math.PI*2); ctx.fill();
+                    // Shockwave ring
+                    ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, 0.7 - t*0.015)})`;
+                    ctx.lineWidth = 8;
+                    ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, t*20, 0, Math.PI*2); ctx.stroke();
+
+                    // Rocket flies away to moon direction
+                    drawRocket(canvas.width*0.1 + t*2, canvas.height*0.15 - t*1.5, 0.7);
+
+                    if(t > 50) { phase = 'moon'; t = 0; }
+                }
+
+                else if(phase === 'moon') {
+                    // Show moon with winner on it
+                    const moonX = canvas.width * 0.5;
+                    const moonY = canvas.height * 0.45;
+                    const moonR = Math.min(canvas.width, canvas.height) * 0.22;
+                    drawMoon(moonX, moonY, moonR);
+
+                    if(t > 30) {
+                        // Winner character on moon surface
+                        ctx.font = `bold ${Math.min(60, moonR*0.4)}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.fillStyle = 'white';
+                        ctx.textBaseline = 'bottom';
+                        ctx.shadowColor = 'gold';
+                        ctx.shadowBlur = 20;
+                        ctx.fillText('🧑‍🚀', moonX, moonY + moonR * 0.2);
+                        ctx.shadowBlur = 0;
+                        // Name
+                        ctx.font = `bold ${Math.floor(moonR*0.2)}px Arial`;
+                        ctx.fillStyle = 'gold';
+                        ctx.fillText(winnerName, moonX, moonY + moonR * 0.5);
+                    }
+
+                    // Stars flying
+                    if(t % 3 === 0) {
+                        ctx.fillStyle = 'gold';
+                        ctx.font = '2rem Arial';
+                        ctx.fillText('⭐', Math.random()*canvas.width, Math.random()*canvas.height*0.3);
+                    }
+
+                    if(t > 60) {
+                        // ПЕРЕМОГА текст
+                        const winEl = document.getElementById('mayo-winner-text');
+                        winEl.innerHTML = `🏆 ${winnerName} ПЕРЕМОЖЕЦЬ!🏆<br>🌕 Залишився на Місяці! 🥫`;
+                        winEl.style.display = 'block';
+                        
+                        if(t > 160) {
+                            overlay.style.display = 'none';
+                            winEl.style.display = 'none';
+                            gameActive = false;
+                            setCenterText(`🏆 ${winnerName} ПЕРЕМОЖЕЦЬ! 🥫🌕`, "gold");
+                            setTimeout(()=>location.reload(), 4000);
+                            return;
+                        }
+                    }
+                }
+                requestAnimationFrame(animLoop);
+            }
+            animLoop();
+        }
+
+        // Зоряний фон
+        (function initStarBg() {
+            const bg = document.getElementById('star-bg');
+            for(let i=0; i<80; i++) {
+                const s = document.createElement('div');
+                s.className = 'star-particle';
+                const size = Math.random()*3+1;
+                s.style.width = size+'px'; s.style.height = size+'px';
+                s.style.left = Math.random()*100+'%';
+                s.style.top = Math.random()*100+'%';
+                s.style.animationDuration = (Math.random()*3+2)+'s';
+                s.style.animationDelay = (Math.random()*5)+'s';
+                bg.appendChild(s);
+            }
+        })();
     </script>
 </body>
 </html>
