@@ -443,7 +443,9 @@
             { id: 'veles', name: 'Велес', img: 'Велес.png' }, /* Or Veles.png */
             { id: 'masha', name: 'Маша', img: 'Masha.png' },
             { id: 'brilliantik', name: 'Брілліантік', img: 'Brilliantik.png' },
-            { id: 'richik', name: 'Річік', img: 'Richik.png' }
+            { id: 'richik', name: 'Річік', img: 'Richik.png' },
+            { id: 'shunya', name: 'Шуня', img: 'Shunya.png' },
+            { id: 'baks', name: 'Бакс', img: 'Baks.png' }
         ];
 
         const ACTIONS = [
@@ -481,6 +483,8 @@
             { id: 'robot', emoji: '🤖', name: 'Робот', desc: '-2 HP x2 цілі', chance: 0.3, type: 'attack' },
             { id: 'eye', emoji: '👁️', name: 'Всевидяче Oko', desc: '-3 HP Не промах', chance: 0.35, type: 'attack' },
             { id: 'dragon', emoji: '🐉', name: 'Дракон', desc: '-6 HP Вогонь', chance: 0.18, type: 'attack' },
+            // РІДКІСНИЙ ПРЕДМЕТ - ПОНЧИК (1%)
+            { id: 'donut', emoji: '🍩', name: '✨ПОНЧИК✨', desc: '1% БЕЗСМЕРТЯ', chance: 0.01, type: 'special', special: true, rarity: 'legendary' },
             // РІДКІСНИЙ ПРЕДМЕТ - МАЙОНЕЗ (1%)
             { id: 'mayo', emoji: '🥫', name: '✨МАЙОНЕЗ✨', desc: '1% ЛЕГЕНДА', chance: 0.01, type: 'special', special: true, rarity: 'legendary' },
         ];
@@ -680,14 +684,11 @@
                 let px, py;
                 
                 if (alive_count >= 11) {
-                    // Квадратна сітка по всьому екрану
-                    const cols = Math.ceil(Math.sqrt(alive_count * W / H));
-                    const rows = Math.ceil(alive_count / cols);
-                    const col = i % cols;
-                    const row = Math.floor(i / cols);
-                    const padX = W * 0.08, padY = H * 0.1;
-                    px = padX + col * (W - padX*2) / Math.max(cols-1, 1);
-                    py = padY + row * (H - padY*2) / Math.max(rows-1, 1);
+                    // Великий круг з великими відстанями
+                    const radius = Math.min(W, H) * 0.42;
+                    const angle = (i / alive_count) * 2 * Math.PI - Math.PI/2;
+                    px = cx + radius * Math.cos(angle);
+                    py = cy + radius * Math.sin(angle);
                 } else {
                     // Звичайне коло
                     const radius = Math.min(W, H) * 0.35;
@@ -710,11 +711,12 @@
                 if(p.shield) statusHtml += '💠 ';
                 if(p.nukes > 0) statusHtml += `☢️${p.nukes} `;
                 if(p.ally !== null) statusHtml += '🤝';
+                if(p.immortal) statusHtml += '♾️';
 
                 node.innerHTML = `
                     <div class="name" style="color:${p.isBot?'var(--bot-color)':'var(--human-color)'}">${p.name}</div>
                     <img src="${p.img}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\' width=\\'50\\' height=\\'50\\'><rect width=\\'50\\' height=\\'50\\' fill=\\'%23444\\'/></svg>'">
-                    <div class="hp">${p.alive ? '❤️'.repeat(Math.min(p.hp, 5))+(p.hp>5?'+'+(p.hp-5):'') : '💀'}</div>
+                    <div class="hp">${p.alive ? (p.immortal ? '♾️ ∞ HP' : '❤️'.repeat(Math.min(p.hp, 5))+(p.hp>5?'+'+(p.hp-5):'')) : '💀'}</div>
                     <div class="status">${statusHtml}</div>`;
                 container.appendChild(node);
             });
@@ -799,8 +801,8 @@
                     // Mayo завжди виглядає особливо навіть коли disabled
                     if(a.rarity === 'legendary' && available) {
                         btn.classList.remove('disabled');
-                        // Показати спалах коли майонез доступний
-                        showMayoAppear();
+                        // Показати спалах коли майонез/пончик доступний
+                        if(a.id === 'mayo' || a.id === 'donut') showMayoAppear(a.id === 'donut' ? '🍩 ПОНЧИК ДОСТУПНИЙ! 🍩' : '✨ МАЙОНЕЗ ДОСТУПНИЙ! ✨');
                     }
                 });
 
@@ -845,9 +847,26 @@
             const attacker = players[currentPlayerIndex];
             if(a.cost === 'nukes') attacker.nukes--;
 
+            // Якщо атакуємо безсмертного - анімація пончика вбиває атакувача
+            if(a.type === 'attack' && tIdx >= 0 && players[tIdx] && players[tIdx].immortal) {
+                await triggerDonutCounterAttack(currentPlayerIndex, tIdx);
+                return;
+            }
+            // Якщо хілка безсмертному - союз і обидва безсмертні
+            if(a.type === 'support' && tIdx >= 0 && players[tIdx] && players[tIdx].immortal && tIdx !== currentPlayerIndex) {
+                await triggerDonutAllianceEvent(currentPlayerIndex, tIdx);
+                return;
+            }
+
             // МАЙОНЕЗ - особлива анімація!
             if(a.id === 'mayo') {
                 await triggerMayoEvent(currentPlayerIndex);
+                return;
+            }
+
+            // ПОНЧИК - безсмертя!
+            if(a.id === 'donut') {
+                await triggerDonutEvent(currentPlayerIndex);
                 return;
             }
 
@@ -990,7 +1009,8 @@
                 attacker.frozen = 1; playSound('freeze'); createParticles(px, py, '#aaffff'); animateText(currentPlayerIndex, "🫧 Пауза", "#aaffff");
             }
 
-            if(target && target.hp <= 0) { target.hp = 0; target.alive = false; target.ally = null; target.shield = false; }
+            if(target && target.hp <= 0 && !target.immortal) { target.hp = 0; target.alive = false; target.ally = null; target.shield = false; }
+            if(target && target.immortal) { target.hp = Infinity; }
             
             renderPlayers();
             if(checkWin()) return;
@@ -1058,7 +1078,7 @@
         function screenShake() { document.body.classList.add('shake'); setTimeout(()=>document.body.classList.remove('shake'), 400); }
         function flash() { const f = document.getElementById('flash-overlay'); f.style.opacity = 1; setTimeout(()=>f.style.opacity=0, 200); }
 
-        function showMayoAppear() {
+        function showMayoAppear(text = '✨ МАЙОНЕЗ ДОСТУПНИЙ! ✨') {
             // Показуємо золотий спалах коли МАЙОНЕЗ доступний
             const f = document.getElementById('flash-overlay');
             f.style.background = 'gold';
@@ -1066,7 +1086,7 @@
             setTimeout(()=>{ f.style.opacity=0; f.style.background='white'; }, 300);
             // Текст появи
             const msg = document.createElement('div');
-            msg.innerHTML = '✨ МАЙОНЕЗ ДОСТУПНИЙ! ✨';
+            msg.innerHTML = text;
             msg.style.cssText = `position:fixed;top:20%;left:50%;transform:translate(-50%,-50%);font-size:1.5rem;font-weight:900;color:gold;text-shadow:0 0 20px gold;z-index:9998;pointer-events:none;animation:fadeInOut 2s forwards;`;
             document.body.appendChild(msg);
             const style = document.createElement('style');
@@ -1078,6 +1098,7 @@
         async function triggerMayoEvent(winnerIdx) {
             gameActive = false;
             const winnerName = players[winnerIdx].name;
+            const winnerImgSrc = players[winnerIdx].img;
             const overlay = document.getElementById('mayo-overlay');
             const canvas = document.getElementById('mayo-canvas');
             const ctx = canvas.getContext('2d');
@@ -1086,17 +1107,39 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
 
-            let phase = 'launch'; // launch -> earth -> explosion -> moon -> win
+            // Preload winner image
+            const winnerImg = new Image();
+            winnerImg.src = winnerImgSrc;
+            await new Promise(r => { winnerImg.onload=r; winnerImg.onerror=r; setTimeout(r,1500); });
+
+            // Preload all other players images for death animation
+            const loserImgs = [];
+            players.forEach((p, i) => {
+                if(i !== winnerIdx && p.alive) {
+                    const img = new Image(); img.src = p.img;
+                    loserImgs.push({ img, name: p.name, x: 0, y: 0, dead: false, deadT: -1 });
+                }
+            });
+
+            let phase = 'launch';
             let t = 0;
             let rocketY = canvas.height * 0.7;
             let rocketX = canvas.width * 0.2;
             let earthScale = 0;
             let mayoJarY = -100;
             let mayoJarX = canvas.width * 0.5;
-            let explosionPhase = 0;
-            let moonPhase = false;
+            let explodeParts = [];
+            let earthRotation = 0;
+
+            // Spread losers around screen
+            loserImgs.forEach((l, i) => {
+                const angle = (i / Math.max(loserImgs.length, 1)) * Math.PI * 2;
+                const r = Math.min(canvas.width, canvas.height) * 0.3;
+                l.x = canvas.width/2 + r * Math.cos(angle);
+                l.y = canvas.height/2 + r * Math.sin(angle);
+            });
+
             let stars = Array.from({length:200},()=>({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*2+0.5,twinkle:Math.random()}));
-            let particles3d = [];
 
             // Draw 3D Earth with canvas
             function drawEarth(cx, cy, r, rotation) {
@@ -1237,8 +1280,7 @@
                 ctx.restore();
             }
 
-            let earthRotation = 0;
-            let explodeParts = [];
+            let earthRotation2 = 0; // alias not needed - using earthRotation above
             
             function animLoop() {
                 if (t % 2 !== 0) { t++; requestAnimationFrame(animLoop); return; }
@@ -1257,11 +1299,9 @@
                 });
 
                 if(phase === 'launch') {
-                    // Rocket launching from player position
                     rocketY -= 2 + t * 0.02;
                     rocketX += (canvas.width/2 - rocketX) * 0.02;
                     drawRocket(rocketX, rocketY, 1 + t * 0.01);
-                    // Trail
                     for(let i=0; i<3; i++) {
                         ctx.fillStyle = `rgba(255,${100+i*50},0,${0.6-i*0.15})`;
                         ctx.beginPath(); ctx.arc(rocketX + (Math.random()-0.5)*10, rocketY + 40 + i*15, 5-i, 0, Math.PI*2); ctx.fill();
@@ -1275,7 +1315,29 @@
                     const earthR = Math.min(canvas.width, canvas.height) * 0.35 * earthScale;
                     const ecx = canvas.width/2, ecy = canvas.height/2;
                     drawEarth(ecx, ecy, earthR, earthRotation);
-                    
+
+                    // Show losers around earth - they start dying
+                    loserImgs.forEach((l, i) => {
+                        const deadProgress = Math.max(0, (t - 20 - i*5) / 40);
+                        ctx.save();
+                        ctx.globalAlpha = Math.max(0.1, 1 - deadProgress);
+                        // Skull overlay when dying
+                        ctx.beginPath(); ctx.arc(l.x, l.y, 22, 0, Math.PI*2);
+                        ctx.fillStyle = deadProgress > 0 ? `rgba(255,0,0,${deadProgress*0.5})` : 'rgba(80,80,80,0.5)';
+                        ctx.fill();
+                        if(l.img.complete && l.img.naturalWidth > 0) {
+                            ctx.beginPath(); ctx.arc(l.x, l.y, 20, 0, Math.PI*2); ctx.clip();
+                            ctx.drawImage(l.img, l.x-20, l.y-20, 40, 40);
+                        } else {
+                            ctx.fillStyle='#666'; ctx.beginPath(); ctx.arc(l.x,l.y,20,0,Math.PI*2); ctx.fill();
+                        }
+                        if(deadProgress > 0.5) {
+                            ctx.font='18px Arial'; ctx.textAlign='center';
+                            ctx.fillText('💀', l.x, l.y - 28);
+                        }
+                        ctx.restore();
+                    });
+
                     // Rocket flies up on the left
                     drawRocket(canvas.width * 0.1, canvas.height * 0.15 + Math.sin(t*0.1)*5, 0.7);
 
@@ -1287,7 +1349,6 @@
 
                     if(mayoJarY > canvas.height/2 - 30) {
                         phase = 'explosion'; t = 0;
-                        // Create explode particles
                         for(let i=0;i<60;i++) {
                             explodeParts.push({
                                 x: canvas.width/2, y: canvas.height/2,
@@ -1302,7 +1363,6 @@
                 }
 
                 else if(phase === 'explosion') {
-                    // Earth exploding
                     explodeParts.forEach(p => {
                         p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.015;
                         ctx.globalAlpha = p.life;
@@ -1310,42 +1370,81 @@
                         ctx.beginPath(); ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI*2); ctx.fill();
                     });
                     ctx.globalAlpha = 1;
-                    // Big flash
                     const expAlpha = Math.max(0, 0.8 - t*0.02);
                     ctx.fillStyle = `rgba(255,200,0,${expAlpha})`;
                     ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, t*15, 0, Math.PI*2); ctx.fill();
-                    // Shockwave ring
                     ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, 0.7 - t*0.015)})`;
                     ctx.lineWidth = 8;
                     ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, t*20, 0, Math.PI*2); ctx.stroke();
 
-                    // Rocket flies away to moon direction
+                    // All losers die in explosion - show their photos flying outward
+                    loserImgs.forEach((l, i) => {
+                        const angle = (i / Math.max(loserImgs.length,1)) * Math.PI * 2;
+                        const dist = t * 6;
+                        const lx = canvas.width/2 + Math.cos(angle)*dist;
+                        const ly = canvas.height/2 + Math.sin(angle)*dist;
+                        ctx.save();
+                        ctx.globalAlpha = Math.max(0, 1 - t*0.02);
+                        ctx.beginPath(); ctx.arc(lx, ly, 18, 0, Math.PI*2); ctx.clip();
+                        if(l.img.complete && l.img.naturalWidth > 0) {
+                            ctx.drawImage(l.img, lx-18, ly-18, 36, 36);
+                        }
+                        ctx.restore();
+                        ctx.globalAlpha = Math.max(0, 1 - t*0.02);
+                        ctx.font='14px Arial';ctx.textAlign='center';
+                        ctx.fillText('💀', lx, ly-22);
+                        ctx.globalAlpha=1;
+                    });
+
+                    // Rocket flies toward moon
                     drawRocket(canvas.width*0.1 + t*2, canvas.height*0.15 - t*1.5, 0.7);
 
                     if(t > 50) { phase = 'moon'; t = 0; }
                 }
 
                 else if(phase === 'moon') {
-                    // Show moon with winner on it
                     const moonX = canvas.width * 0.5;
                     const moonY = canvas.height * 0.45;
                     const moonR = Math.min(canvas.width, canvas.height) * 0.22;
                     drawMoon(moonX, moonY, moonR);
 
                     if(t > 30) {
-                        // Winner character on moon surface
-                        ctx.font = `bold ${Math.min(60, moonR*0.4)}px Arial`;
-                        ctx.textAlign = 'center';
-                        ctx.fillStyle = 'white';
-                        ctx.textBaseline = 'bottom';
-                        ctx.shadowColor = 'gold';
-                        ctx.shadowBlur = 20;
-                        ctx.fillText('🧑‍🚀', moonX, moonY + moonR * 0.2);
+                        // Rocket lands on moon surface
+                        const rocketLandX = moonX + moonR*0.3;
+                        const rocketLandY = moonY + moonR*0.6;
+                        const rocketArriveT = Math.min(1, (t-30)/40);
+                        const rocketCurX = canvas.width*0.8 + (rocketLandX - canvas.width*0.8)*rocketArriveT;
+                        const rocketCurY = canvas.height*0.05 + (rocketLandY - canvas.height*0.05)*rocketArriveT;
+                        drawRocket(rocketCurX, rocketCurY, 0.5);
+                    }
+
+                    if(t > 70) {
+                        // Winner photo on moon surface
+                        const photoX = moonX - moonR*0.15;
+                        const photoY = moonY + moonR*0.15;
+                        const photoR = moonR * 0.28;
+                        ctx.save();
+                        // Halo / golden glow
+                        ctx.shadowColor = 'gold'; ctx.shadowBlur = 30;
+                        ctx.beginPath(); ctx.arc(photoX, photoY, photoR+4, 0, Math.PI*2);
+                        ctx.strokeStyle = 'gold'; ctx.lineWidth = 4; ctx.stroke();
                         ctx.shadowBlur = 0;
-                        // Name
-                        ctx.font = `bold ${Math.floor(moonR*0.2)}px Arial`;
+                        // Photo circle
+                        ctx.beginPath(); ctx.arc(photoX, photoY, photoR, 0, Math.PI*2); ctx.clip();
+                        if(winnerImg.complete && winnerImg.naturalWidth > 0) {
+                            ctx.drawImage(winnerImg, photoX-photoR, photoY-photoR, photoR*2, photoR*2);
+                        } else {
+                            ctx.fillStyle='#888'; ctx.beginPath(); ctx.arc(photoX,photoY,photoR,0,Math.PI*2); ctx.fill();
+                            ctx.fillStyle='white'; ctx.font=`bold ${photoR*0.5}px Arial`; ctx.textAlign='center'; ctx.fillText('🧑‍🚀', photoX, photoY+photoR*0.15);
+                        }
+                        ctx.restore();
+                        // Name under photo
+                        ctx.font = `bold ${Math.floor(moonR*0.18)}px Arial`;
                         ctx.fillStyle = 'gold';
-                        ctx.fillText(winnerName, moonX, moonY + moonR * 0.5);
+                        ctx.textAlign = 'center';
+                        ctx.shadowColor='gold'; ctx.shadowBlur=10;
+                        ctx.fillText(winnerName, photoX, photoY + photoR + moonR*0.18);
+                        ctx.shadowBlur=0;
                     }
 
                     // Stars flying
@@ -1356,7 +1455,6 @@
                     }
 
                     if(t > 60) {
-                        // ПЕРЕМОГА текст
                         const winEl = document.getElementById('mayo-winner-text');
                         winEl.innerHTML = `🏆 ${winnerName} ПЕРЕМОЖЕЦЬ!🏆<br>🌕 Залишився на Місяці! 🥫`;
                         winEl.style.display = 'block';
@@ -1374,6 +1472,267 @@
                 requestAnimationFrame(animLoop);
             }
             animLoop();
+        }
+
+        // ===== ПОНЧИК =====
+        async function triggerDonutEvent(winnerIdx) {
+            gameActive = false;
+            const winner = players[winnerIdx];
+            const overlay = document.getElementById('mayo-overlay');
+            const canvas = document.getElementById('mayo-canvas');
+            const ctx = canvas.getContext('2d');
+            overlay.style.display = 'block';
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            let t = 0;
+            let phase = 'fly'; // fly -> eat -> immortal
+            const W = canvas.width, H = canvas.height;
+            const charImg = new Image();
+            charImg.src = winner.img;
+
+            // Завантаження зображення
+            await new Promise(r => { charImg.onload = r; charImg.onerror = r; setTimeout(r, 1000); });
+
+            function drawDonut(x, y, r) {
+                ctx.save();
+                ctx.translate(x, y);
+                // Outer circle
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, Math.PI*2);
+                const dg = ctx.createRadialGradient(-r*0.3,-r*0.3,0,0,0,r);
+                dg.addColorStop(0,'#ffcc88'); dg.addColorStop(1,'#cc7700');
+                ctx.fillStyle = dg; ctx.fill();
+                // Icing
+                ctx.beginPath();
+                ctx.arc(0, 0, r*0.85, 0, Math.PI*2);
+                const ig = ctx.createRadialGradient(-r*0.2,-r*0.3,0,0,0,r*0.85);
+                ig.addColorStop(0,'#ff99cc'); ig.addColorStop(1,'#ff3399');
+                ctx.fillStyle = ig; ctx.fill();
+                // Sprinkles
+                const sprinkles = [{x:-r*0.3,y:-r*0.4,a:0.5,c:'#ff0'},{x:r*0.2,y:-r*0.5,a:-0.3,c:'#0f0'},{x:r*0.4,y:r*0.1,a:1,c:'#00f'},{x:-r*0.5,y:r*0.2,a:-0.8,c:'#f00'},{x:r*0.1,y:r*0.4,a:0.2,c:'#0ff'}];
+                sprinkles.forEach(s=>{ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.a);ctx.fillStyle=s.c;ctx.fillRect(-r*0.06,-r*0.02,r*0.12,r*0.04);ctx.restore();});
+                // Hole
+                ctx.beginPath(); ctx.arc(0,0,r*0.35,0,Math.PI*2);
+                ctx.fillStyle='#000010'; ctx.fill();
+                ctx.restore();
+            }
+
+            function drawCharOnWhite() {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, W, H);
+                // Draw character centered
+                const cs = 120;
+                ctx.save();
+                ctx.beginPath(); ctx.arc(W/2, H*0.6, cs/2+5, 0, Math.PI*2);
+                ctx.fillStyle = '#eee'; ctx.fill();
+                ctx.beginPath(); ctx.arc(W/2, H*0.6, cs/2, 0, Math.PI*2); ctx.clip();
+                ctx.drawImage(charImg, W/2-cs/2, H*0.6-cs/2, cs, cs);
+                ctx.restore();
+                ctx.fillStyle = '#333'; ctx.font = 'bold 28px Arial'; ctx.textAlign = 'center';
+                ctx.fillText(winner.name, W/2, H*0.6+cs/2+35);
+            }
+
+            function animDonut() {
+                ctx.clearRect(0,0,W,H);
+                if(phase === 'fly') {
+                    drawCharOnWhite();
+                    // Giant donut flies from top
+                    const donutY = -200 + t * 8;
+                    const donutR = 80 + t * 1.5;
+                    drawDonut(W/2, donutY, Math.min(donutR, 150));
+                    if(t > 50 && donutY > H*0.3) { phase = 'eat'; t = 0; }
+                }
+                else if(phase === 'eat') {
+                    drawCharOnWhite();
+                    // Donut near character - eating animation
+                    const donutR = 150 - t * 3;
+                    if(donutR > 0) drawDonut(W/2, H*0.35, donutR);
+                    // Bite particles
+                    if(t % 5 === 0) {
+                        for(let i=0;i<5;i++){
+                            const p = document.createElement('div');
+                            p.style.cssText=`position:fixed;left:${W/2+(Math.random()-0.5)*100}px;top:${H*0.4+(Math.random()-0.5)*80}px;font-size:20px;pointer-events:none;z-index:10002;transition:all 0.8s`;
+                            p.textContent='✨';document.body.appendChild(p);
+                            setTimeout(()=>{p.style.opacity='0';p.style.transform='translateY(-50px)'},50);
+                            setTimeout(()=>p.remove(),900);
+                        }
+                    }
+                    if(t > 50) { phase = 'immortal'; t = 0; }
+                }
+                else if(phase === 'immortal') {
+                    // Immortal glow
+                    const glow = Math.sin(t*0.15)*0.3+0.7;
+                    ctx.fillStyle = `rgba(255,215,0,${glow*0.3})`;
+                    ctx.fillRect(0,0,W,H);
+                    drawCharOnWhite();
+                    // Halo
+                    ctx.strokeStyle = `rgba(255,215,0,${glow})`;
+                    ctx.lineWidth = 8;
+                    ctx.beginPath(); ctx.arc(W/2, H*0.6, 80, 0, Math.PI*2); ctx.stroke();
+                    // Infinity symbol
+                    ctx.font = 'bold 80px Arial'; ctx.fillStyle = 'gold'; ctx.textAlign = 'center';
+                    ctx.shadowColor='gold'; ctx.shadowBlur=30;
+                    ctx.fillText('♾️', W/2, H*0.25);
+                    ctx.shadowBlur=0;
+                    ctx.font='bold 32px Arial'; ctx.fillStyle='#333';
+                    ctx.fillText('НЕСКІНЧЕННІСТЬ HP!', W/2, H*0.85);
+                    if(t > 80) {
+                        // Make immortal and resume
+                        overlay.style.display='none';
+                        winner.immortal = true;
+                        winner.hp = Infinity;
+                        gameActive = true;
+                        renderPlayers();
+                        animateText(winnerIdx, "♾️ БЕЗСМЕРТНИЙ!", "gold");
+                        passTurn((winnerIdx+1)%players.length);
+                        return;
+                    }
+                }
+                t++;
+                requestAnimationFrame(animDonut);
+            }
+            animDonut();
+        }
+
+        async function triggerDonutCounterAttack(attackerIdx, immortalIdx) {
+            const attacker = players[attackerIdx];
+            const overlay = document.getElementById('mayo-overlay');
+            const canvas = document.getElementById('mayo-canvas');
+            const ctx = canvas.getContext('2d');
+            overlay.style.display = 'block';
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const W = canvas.width, H = canvas.height;
+            const attackerImg = new Image(); attackerImg.src = attacker.img;
+            await new Promise(r => { attackerImg.onload=r; attackerImg.onerror=r; setTimeout(r,1000); });
+
+            let t = 0;
+            function animCounter() {
+                ctx.clearRect(0,0,W,H);
+                ctx.fillStyle = 'white'; ctx.fillRect(0,0,W,H);
+                // Draw attacker
+                const cs = 100;
+                ctx.save();
+                ctx.beginPath(); ctx.arc(W/2, H*0.6, cs/2, 0, Math.PI*2); ctx.clip();
+                ctx.drawImage(attackerImg, W/2-cs/2, H*0.6-cs/2, cs, cs); ctx.restore();
+                ctx.fillStyle='#333';ctx.font='bold 24px Arial';ctx.textAlign='center';
+                ctx.fillText(attacker.name, W/2, H*0.6+cs/2+30);
+                // Donut flies in from top and crushes
+                const donutY = -100 + t*9;
+                const scale = Math.min(1, t*0.05);
+                ctx.save(); ctx.translate(W/2, Math.min(donutY, H*0.45)); ctx.scale(1+scale, 1+scale);
+                // Draw donut inline
+                const r = 90;
+                ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
+                const dg=ctx.createRadialGradient(-30,-30,0,0,0,r);dg.addColorStop(0,'#ffcc88');dg.addColorStop(1,'#cc7700');
+                ctx.fillStyle=dg;ctx.fill();
+                ctx.beginPath();ctx.arc(0,0,r*0.85,0,Math.PI*2);
+                ctx.fillStyle='#ff3399';ctx.fill();
+                ctx.beginPath();ctx.arc(0,0,r*0.35,0,Math.PI*2);ctx.fillStyle='#000010';ctx.fill();
+                ctx.restore();
+                if(donutY > H*0.4 && t > 20) {
+                    ctx.fillStyle=`rgba(255,100,0,${Math.min(1,(t-20)*0.05)})`;ctx.fillRect(0,0,W,H);
+                    ctx.font='bold 40px Arial';ctx.fillStyle='white';ctx.textAlign='center';
+                    ctx.fillText('💀 ЗНИЩЕНО ПОНЧИКОМ!', W/2, H*0.5);
+                }
+                if(t > 80) {
+                    overlay.style.display='none';
+                    attacker.hp = 0; attacker.alive = false;
+                    gameActive = true;
+                    renderPlayers();
+                    if(checkWin()) return;
+                    passTurn((attackerIdx+1)%players.length);
+                    return;
+                }
+                t++;
+                requestAnimationFrame(animCounter);
+            }
+            animCounter();
+        }
+
+        async function triggerDonutAllianceEvent(giverIdx, immortalIdx) {
+            const giver = players[giverIdx];
+            const immortal = players[immortalIdx];
+            const overlay = document.getElementById('mayo-overlay');
+            const canvas = document.getElementById('mayo-canvas');
+            const ctx = canvas.getContext('2d');
+            overlay.style.display = 'block';
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const W = canvas.width, H = canvas.height;
+
+            const giverImg = new Image(); giverImg.src = giver.img;
+            const immortalImg = new Image(); immortalImg.src = immortal.img;
+            await Promise.all([
+                new Promise(r=>{giverImg.onload=r;giverImg.onerror=r;setTimeout(r,1000);}),
+                new Promise(r=>{immortalImg.onload=r;immortalImg.onerror=r;setTimeout(r,1000);})
+            ]);
+
+            let t = 0;
+            function animAlliance() {
+                ctx.clearRect(0,0,W,H);
+                ctx.fillStyle='white';ctx.fillRect(0,0,W,H);
+                // Phase 1: donut appears above giver
+                if(t < 60) {
+                    const cs=100;
+                    // Draw giver
+                    ctx.save();ctx.beginPath();ctx.arc(W*0.35,H*0.6,cs/2,0,Math.PI*2);ctx.clip();
+                    ctx.drawImage(giverImg,W*0.35-cs/2,H*0.6-cs/2,cs,cs);ctx.restore();
+                    ctx.fillStyle='#333';ctx.font='bold 22px Arial';ctx.textAlign='center';ctx.fillText(giver.name,W*0.35,H*0.6+cs/2+28);
+                    // Donut descends
+                    const donutY = -100 + t*6;
+                    ctx.save();ctx.translate(W*0.35, Math.min(donutY,H*0.35));
+                    const r=70;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);
+                    const dg=ctx.createRadialGradient(-20,-20,0,0,0,r);dg.addColorStop(0,'#ffcc88');dg.addColorStop(1,'#cc7700');
+                    ctx.fillStyle=dg;ctx.fill();ctx.beginPath();ctx.arc(0,0,r*0.85,0,Math.PI*2);ctx.fillStyle='#ff3399';ctx.fill();
+                    ctx.beginPath();ctx.arc(0,0,r*0.35,0,Math.PI*2);ctx.fillStyle='#000010';ctx.fill();ctx.restore();
+                    if(donutY > H*0.3) {
+                        ctx.font='bold 28px Arial';ctx.fillStyle='gold';ctx.textAlign='center';
+                        ctx.fillText('♾️ '+giver.name+' теж безсмертний!',W/2,H*0.25);
+                    }
+                }
+                // Phase 2: both fight together
+                else {
+                    const tt = t-60;
+                    const cs=100;
+                    // Draw both heroes
+                    ctx.save();ctx.beginPath();ctx.arc(W*0.25,H*0.55,cs/2,0,Math.PI*2);ctx.clip();
+                    ctx.drawImage(giverImg,W*0.25-cs/2,H*0.55-cs/2,cs,cs);ctx.restore();
+                    ctx.save();ctx.beginPath();ctx.arc(W*0.75,H*0.55,cs/2,0,Math.PI*2);ctx.clip();
+                    ctx.drawImage(immortalImg,W*0.75-cs/2,H*0.55-cs/2,cs,cs);ctx.restore();
+                    ctx.fillStyle='gold';ctx.font='bold 60px Arial';ctx.textAlign='center';ctx.fillText('🤝',W/2,H*0.55+30);
+                    ctx.fillStyle='gold';ctx.font='bold 60px Arial';
+                    ctx.fillText('♾️',W*0.25,H*0.35);ctx.fillText('♾️',W*0.75,H*0.35);
+                    // Fight explosions
+                    for(let i=0;i<3;i++){
+                        if(Math.random()>0.5){
+                            const ex=Math.random()*W, ey=Math.random()*H*0.4+H*0.05;
+                            ctx.font='40px Arial';ctx.fillText('💥',ex,ey);
+                        }
+                    }
+                    ctx.fillStyle='#333';ctx.font='bold 26px Arial';ctx.textAlign='center';
+                    ctx.fillText('ДВОЄ БЕЗСМЕРТНИХ ПЕРЕМАГАЮТЬ УСІХ!',W/2,H*0.85);
+                    if(tt > 100) {
+                        overlay.style.display='none';
+                        giver.immortal=true; giver.hp=Infinity;
+                        giver.ally=immortalIdx; immortal.ally=giverIdx;
+                        // Kill all others
+                        players.forEach((p,i)=>{ if(i!==giverIdx&&i!==immortalIdx){p.alive=false;p.hp=0;} });
+                        gameActive=true;
+                        renderPlayers();
+                        gameActive=false;
+                        setCenterText(`🏆 АЛЬЯНС БЕЗСМЕРТНИХ 🏆\n${giver.name} 🤝 ${immortal.name}`,"gold");
+                        createParticles(window.innerWidth/2,window.innerHeight/2,'gold');
+                        setTimeout(()=>location.reload(),4000);
+                        return;
+                    }
+                }
+                t++;
+                requestAnimationFrame(animAlliance);
+            }
+            animAlliance();
         }
 
         // Зоряний фон
